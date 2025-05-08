@@ -1,0 +1,35 @@
+Package: swaap
+Title: School-Wide Assessment Analysis Preparation
+Version: 0.99.0
+Authors@R: 
+  c(
+    person(
+      given = "Kevin", 
+      family = "Potter",
+      role = c("aut", "cre"),
+      email = "kpotter5@mgh.harvard.edu", 
+      comment = c(ORCID = "YOUR-ORCID-ID")
+    ),
+    person(
+      given = "Michael", 
+      family = "Pascale",
+      role = c("ctb")
+    ),
+    person(
+      given = "Jasmeen", 
+      family = "Kaur",
+      role = c("ctb"),
+      email = "jkaur12@mgh.harvard.edu"
+    )
+  )
+Description: 
+  Functions for analysis preparation of school-wide 
+  assessment data collected by the Center for School 
+  Behavioral Health at Massachusetts General Hospital.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends: 
+    R (>= 2.10)
+LazyData: true
