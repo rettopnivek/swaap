@@ -12,7 +12,7 @@
 # E) swaap_recode.experience
 # I) swaap_recode.inventories
 #   I.1) AUDIT
-#   I.2) AADDI
+#   1.2) ADDI
 # L) swaap_recode.linking
 # Q) swaap_recode.quality
 

@@ -11,6 +11,7 @@ swaap_data.merge(
   chr_select = "",
   lgc_SBIRT = FALSE,
   lgc_remove_flagged = TRUE,
+  chr_source_files = "",
   lgc_progress = TRUE
 )
 }

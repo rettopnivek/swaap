@@ -5,6 +5,15 @@
 # have any questions or comments
 # Last updated 2025-05-08
 
+# Table of contents
+# 1) swaap_data.merge
+# 2) swaap_data.missing
+# 3) swaap_data.files
+# 4) swaap_data.attr
+# 5) swaap_data.subset
+#   5.1) swaap_data.internal.copy_attr
+# 6) swaap_data.download
+
 #### 1) swaap_data.merge ####
 #' Merge Multiple Data Sets
 #'
@@ -54,6 +63,7 @@ swaap_data.merge <- function(
     chr_select = '',
     lgc_SBIRT = FALSE,
     lgc_remove_flagged = TRUE,
+    chr_source_files = '',
     lgc_progress = TRUE ) {
 
   # List available functions
@@ -64,11 +74,12 @@ swaap_data.merge <- function(
 
     # Add functions
     message( "chr_add = c(" )
+    message( "  'source'," )
     message( "  'school_enrollment'," )
     message( "  'year_and_semester'," )
-    message( "  'SBIRT_sample'," )
-    message( "  'subtance_use'," )
-    message( "  'quality_checks'" )
+    message( "  'SBIRT'," )
+    message( "  'subtances'," )
+    message( "  'quality'" )
     message( ")" )
     message("")
 
@@ -87,14 +98,14 @@ swaap_data.merge <- function(
     # Select functions
     message( "chr_select = c(" )
     message( "  'base'," )
-    message( "  'contact_info'," )
+    message( "  'contact'," )
     message( "  'demographics'," )
     message( "  'experience'," )
     message( "  'inventories'" )
     message( "  'linking'," )
     message( "  'quality'," )
     message( "  'SBIRT'," )
-    message( "  'substance_use'" )
+    message( "  'substances'" )
     message( ")" )
     message("")
 
@@ -110,11 +121,12 @@ swaap_data.merge <- function(
   if ( all( chr_add == '' ) ) {
 
     chr_add <- c(
+      'swaap_add.source',
       'swaap_add.school_enrollment',
       'swaap_add.year_and_semester',
-      'swaap_add.SBIRT_sample',
-      'swaap_add.substance_use',
-      'swaap_add.quality_checks'
+      'swaap_add.SBIRT',
+      'swaap_add.substances',
+      'swaap_add.quality'
     )
 
     # Close 'Default add functions'
@@ -157,11 +169,11 @@ swaap_data.merge <- function(
 
     chr_select <- c(
       'swaap_select.base',
-      'swaap_select.contact_info',
+      'swaap_select.contact',
       'swaap_select.demographics',
       'swaap_select.linking',
       'swaap_select.SBIRT',
-      'swaap_select.substance_use',
+      'swaap_select.substances',
       'swaap_select.experience',
       'swaap_select.inventories',
       'swaap_select.quality'
@@ -192,8 +204,27 @@ swaap_data.merge <- function(
 
       if ( lgc_progress ) message( paste0( '      ', chr_add[j] ) )
 
+      # Flag special cases
+      chr_special <- ''
+      if ( 'swaap_add.source' %in% chr_add[j] )
+        chr_special <- 'source'
+      if ( 'swaap_add.substances' %in% chr_add[j] )
+        chr_special <- 'substances'
+
+      # Adding source info
+      if ( chr_special == 'source' ) {
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_source_files = chr_source_files )
+        )
+
+        # Close 'Adding source info'
+      }
+
       # Adding substances
-      if ( 'swaap_add.substance_use' %in% chr_add[j] ) {
+      if ( chr_special == 'substances' ) {
 
         dtf_current <- do.call(
           chr_add[j],
@@ -214,14 +245,17 @@ swaap_data.merge <- function(
         )
 
         # Close 'Adding substances'
-      } else {
+      }
+
+      # Standard case
+      if ( chr_special == '' ) {
 
         dtf_current <- do.call(
           chr_add[j],
           list( dtf_data = dtf_current )
         )
 
-        # Close else for 'Adding substances'
+        # Close 'Standard case'
       }
 
       # Close 'Loop over add functions'
@@ -501,7 +535,8 @@ swaap_data.files <- function(
     )
     chr_labels <- sapply(
       seq_along(int_index), function(s) {
-        chr_cur <- gsub( chr_tag, '', chr_files[s], fixed = TRUE )
+        chr_cur <-
+          gsub( chr_tag, '', chr_files[int_index][s], fixed = TRUE )
         return( strsplit( chr_cur, split = chr_sep )[[1]][1] )
       }
     )
@@ -648,3 +683,327 @@ swaap_data.internal.copy_attr <- function(
   }
 
 }
+
+#### 6) swaap_data.download ####
+#' Download School-wide assessment Data
+#'
+#' Function to copy school-wide assessment
+#' data from Dropbox to a local folder, or
+#' at least provide path to specified data set.
+#'
+#' @param chr_dropbox A character string, the local
+#'   path to the user's Dropbox folder.
+#' @param chr_data A character vector, the data sets
+#'   to copy, in the format \code{'<Year> <Semester>'}
+#'   (e.g., \code{c( '2023 Fall', '2024 Fall' )}).
+#' @param lgc_complete A logical value; if \code{TRUE}
+#'   downloads the full data set that includes
+#'   confidential patient health information
+#'   (only set to \code{TRUE} if you are positive you
+#'   have full access to the data).
+#' @param lgc_rename A logical value; if \code{TRUE}
+#'   renames source files to the format:
+#'   \code{'SWA-Surveys-<Year><Semester>-<Date>.csv'}
+#' @param chr_copy_to A character string, the folder
+#'   to which data should be copied. If \code{NULL}
+#'   files will not be copied.
+#' @param lgc_silent A logical value; if \code{TRUE}
+#'   suppresses warning messages.
+#'
+#' @returns A data frame with the file paths (both full
+#' and truncated to within the CAM Data Dropbox folder)
+#' for the requested data sets. If \code{chr_copy_to}
+#' is not \code{NULL} as a side effect copies the files
+#' from the Dropbox folder to the user-specified local
+#' folder.
+#'
+#' @export
+
+swaap_data.download <- function(
+    chr_dropbox,
+    chr_data = '2023 Fall',
+    lgc_complete = FALSE,
+    lgc_rename = TRUE,
+    chr_copy_to = NULL,
+    lgc_silent = FALSE ) {
+
+  # chr_dropbox = "C:/Users/tempp/Partners HealthCare Dropbox/Kevin Potter"
+
+  chr_CAM <- "CAM Data/SWA-2015/Output"
+
+  # Path to Dropbox folder with SWA data
+  chr_path_part_1 <- paste0(
+    chr_dropbox, "/", chr_CAM
+  )
+
+  dtf_output <- data.frame(
+    Year = rep( '', length(chr_data) ),
+    Semester = '',
+    Full = '',
+    Partial = '',
+    New = '',
+    PHI = lgc_complete
+  )
+
+  # Loop over data sets
+  for (d in seq_along(chr_data) ) {
+
+    chr_parts <- strsplit(
+      chr_data[d], split = ' ', fixed = TRUE
+    )[[1]]
+    chr_year <- chr_parts[1]
+    chr_semester <- chr_parts[2]
+
+    # Initialize full path to data
+    chr_path_full <- chr_path_part_1
+    # Initialize partial path to data
+    chr_path_partial <- chr_CAM
+
+    chr_contents <- dir( path = chr_path_part_1 )
+
+    if ( length(chr_contents) == 0 )
+      stop( "Dropbox folder with CAM Data not found" )
+
+    # Folder is either (1) <year semester> or (2) <year>
+
+    chr_year_semester <-
+      paste0( chr_year, ' ', chr_semester )
+
+    lgc_found <- FALSE
+
+    # First try year and semester combo
+    if ( !lgc_found & chr_year_semester %in% chr_contents ) {
+
+      # Sub-folder with data
+      chr_path_part_2 <- paste0( '/', chr_year_semester )
+      chr_path_full <- paste0(
+        chr_path_full, chr_path_part_2
+      )
+      chr_path_partial <- paste0(
+        chr_path_partial, chr_path_part_2
+      )
+
+      lgc_found <- TRUE
+
+      # Close 'First try year and semester combo'
+    }
+
+    # Next try only year
+    if ( !lgc_found & chr_year %in% chr_contents ) {
+
+      # Sub-folder with data
+      chr_path_part_2 <- paste0( '/', chr_year )
+      chr_path_full <- paste0(
+        chr_path_full, chr_path_part_2
+      )
+      chr_path_partial <- paste0(
+        chr_path_partial, chr_path_part_2
+      )
+
+      # If only year found, then semester must be Fall
+      chr_semester <- 'Fall'
+
+      lgc_found <- TRUE
+
+      # Close 'Next try only year'
+    }
+
+    if (!lgc_found)
+      stop( 'Folder for year and semester not found' )
+
+    # Check if data in sub-folders
+    chr_contents_sub <- dir( path = chr_path_full )
+
+    lgc_csv <- grepl(
+      '.csv', chr_contents_sub, fixed = TRUE
+    )
+
+    # Check sub-folders
+    if ( !any( lgc_csv ) ) {
+
+      # Download complete data
+      if ( lgc_complete ) {
+
+        lgc_subfolder <- grepl(
+          'Complete', chr_contents_sub, fixed = TRUE
+        )
+
+        # Files in complete sub-folder
+        chr_path_part_3 <- paste0( '/', chr_contents_sub[lgc_subfolder][1] )
+        chr_path_full <- paste0(
+          chr_path_full, chr_path_part_3
+        )
+        chr_path_partial <- paste0(
+          chr_path_partial, chr_path_part_3
+        )
+
+        if (!lgc_silent)
+          warning( 'Complete data includes confidential patient health info' )
+
+        # Close 'Download complete data'
+      } else {
+
+        lgc_subfolder <- grepl(
+          'De-Identified', chr_contents_sub, fixed = TRUE
+        )
+
+        # Files in de-identified sub-folder
+        chr_path_part_3 <- paste0( '/', chr_contents_sub[lgc_subfolder][1] )
+        chr_path_full <- paste0(
+          chr_path_full, chr_path_part_3
+        )
+        chr_path_partial <- paste0(
+          chr_path_partial, chr_path_part_3
+        )
+
+        # Close else for 'Download complete data'
+      }
+
+      # Close 'Check sub-folders'
+    } else {
+
+      if (!lgc_complete) stop( 'De-identified data not prepped yet' )
+
+      if (!lgc_silent)
+        warning( 'Complete data includes confidential patient health info' )
+
+      # Close 'Check sub-folders'
+    }
+
+    chr_contents_csv <- dir(
+      path = chr_path_full
+    )
+
+    lgc_csv <- grepl(
+      '.csv', chr_contents_csv, fixed = TRUE
+    )
+
+    if ( !any( lgc_csv ) )
+      stop( "No .csv file found" )
+
+    # Isolate .csv files
+    chr_contents_csv <- chr_contents_csv[lgc_csv]
+
+    # Take most recent file
+    lst_info <- lapply(
+      chr_contents_csv, function(f) {
+
+        obj_info <- file.info(
+          paste0( chr_path_full, '/', f )
+        )
+
+      }
+    )
+
+    int_most_recent <- which.max(
+      sapply( seq_along(lst_info), function(l) lst_info[[l]]$ctime )
+    )
+
+    chr_contents_csv <- chr_contents_csv[int_most_recent[1]]
+    chr_path_full <- paste0(
+      chr_path_full, '/', chr_contents_csv
+    )
+    chr_path_partial <- paste0(
+      chr_path_partial, '/', chr_contents_csv
+    )
+
+    chr_new <- chr_contents_csv
+
+    # Rename file
+    if ( lgc_rename ) {
+
+      chr_new <- paste0(
+        'SWA-Surveys-',
+        chr_year, chr_semester,
+        '-',
+        format( lst_info[[int_most_recent[1]]]$ctime, '%Y_%m_%d-%H_%M' ),
+        '.csv'
+      )
+
+      # Close 'Rename file'
+    }
+
+    # Copy to new location
+    if ( !is.null( chr_copy_to ) ) {
+
+      # Sub-folder
+      if ( chr_copy_to != '' ) {
+
+        chr_path_new <- paste0(
+          chr_copy_to, '/', chr_new
+        )
+
+        # Close 'Sub-folder'
+      } else {
+
+        chr_path_new <- chr_new
+
+        # Close else for 'Sub-folder'
+      }
+
+      lgc_success <- file.copy(
+        from = chr_path_full,
+        to = chr_path_new
+      )
+
+      if (!lgc_success)
+        stop( 'Failed to copy to new location' )
+
+      if (!lgc_silent)
+        message( 'File copied to specified location' )
+
+      # Close 'Copy to new location'
+    }
+
+    chr_output <- c( chr_path_full, chr_path_partial )
+    if ( !is.null( chr_copy_to ) )
+      chr_output <- c( chr_output, chr_path_new )
+
+    dtf_output$Year[d] <- chr_year
+    dtf_output$Semester[d] <- chr_semester
+    dtf_output$Full[d] = chr_output[1]
+    dtf_output$Partial[d] = chr_output[2]
+    dtf_output$New[d] = chr_output[3]
+
+    # Close 'Loop over data sets'
+  }
+
+  # Include .csv with source info
+  if ( !is.null( chr_copy_to ) ) {
+
+    chr_source_info <- paste0(
+      'SWA-Source_info-',
+      format( Sys.time(), '%Y_%m_%d-%H_%M' ),
+      '.csv'
+    )
+    if ( chr_copy_to != '' )
+      chr_source_info <-
+        paste0( chr_copy_to, '/', chr_source_info )
+
+    write.csv(
+      dtf_output,
+      file = chr_source_info,
+      row.names = FALSE
+    )
+
+    # Close 'Include .csv with source info'
+  }
+
+  return( dtf_output )
+}
+
+#### 7) ... ####
+
+# swaap_data.normalize <- function(
+#     dtf_data,
+#     chr_variable ) {
+#
+#   lst_variables <- list(
+#     race = c(
+#       'SBJ.CHR.Race'
+#     )
+#   )
+#
+# }
+
+

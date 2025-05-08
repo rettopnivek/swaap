@@ -4,7 +4,10 @@
 \alias{swaap_link.report}
 \title{Summary of Linking of Records}
 \usage{
-swaap_link.report(dtf_linked, lst_groups = list(Time = "SSS.INT.TimePoint"))
+swaap_link.report(
+  dtf_linked,
+  lst_groups = list(Wave = "SSS.INT.LongitudinalWave", Time = "SSS.INT.TimePoint")
+)
 }
 \arguments{
 \item{dtf_linked}{A data frame, the output
@@ -13,10 +16,6 @@ from \link{swaap_link}.}
 \item{lst_groups}{A named list of column names,
 the grouping factors to consider when summarizing
 the number of records linked.}
-
-\item{lgc_display}{A logical value; if \code{TRUE}
-prints the results to the console in addition
-to returning output as a list.}
 }
 \value{
 A list of data frames.
@@ -32,11 +31,9 @@ rejections.
 }
 \examples{
 # Linking across time points
-dtf_long <- swaap_data( c( 'link', 'demo' ) )
+dtf_long <- swaap_simulate( 'link', 'demo' )
 dtf_linked <- swaap_link(dtf_long)
-lst_summary <- swaap_link.report(
-  dtf_linked
-)
+lst_summary <- swaap_link.report(dtf_linked)
 
 }
 \author{

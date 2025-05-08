@@ -84,7 +84,7 @@ using a set of linking items.
 }
 \examples{
 # Generate demonstration data
-dtf_long <- swaap_data( c( 'link', 'demo' ) )
+dtf_long <- swaap_simulate( 'link', 'demo' )
 # Record linkage
 dtf_linked <- swaap_link( dtf_long )
 

@@ -1,16 +1,16 @@
-# Functions to recode variables
+# Functions to select variables
 # Written by Kevin Potter
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-06
+# Last updated 2025-05-08
 
 # Table of contents
 # 1) swaap_select
 # 2) swaap_select.merge
 # 3) Specific subsets
 #   3.B) swaap_select.base
-#   3.C) swaap_select.contact_info
+#   3.C) swaap_select.contact
 #   3.D) swaap_select.demographics
 #   3.E) swaap_select.experience
 #   3.I) swaap_select.inventories
@@ -18,7 +18,7 @@
 #   3.L) swaap_select.linking
 #   3.Q) swaap_select.quality
 #   3.S) swaap_select.SBIRT
-#   3.S) swaap_select.substance_use
+#   3.S) swaap_select.substances
 
 #### 1) swaap_select ####
 #' Select Columns
@@ -97,6 +97,7 @@ swaap_select.base <- function(
     lgc_original = FALSE ) {
 
   chr_add <- c(
+    'SSS.CHR.SourceFileDetails',
     'SSS.CHR.DataSet',
     'SSS.INT.SurveyYear',
     'SSS.CHR.Semester',
@@ -141,7 +142,7 @@ swaap_select.base <- function(
   return( chr_output )
 }
 
-#### 3.C) swaap_select.contact_info ####
+#### 3.C) swaap_select.contact ####
 #' Select Contact Information Items
 #'
 #' Function to select standard contact
@@ -154,7 +155,7 @@ swaap_select.base <- function(
 #'
 #' @export
 
-swaap_select.contact_info <- function(
+swaap_select.contact <- function(
     chr_input = NULL ) {
 
   chr_add <- c(
@@ -513,7 +514,7 @@ swaap_select.SBIRT <- function(
   return( chr_output )
 }
 
-#### 3.S) swaap_select.substance_use ####
+#### 3.S) swaap_select.substances ####
 #' Select Variables Denoting SBIRT Sample
 #'
 #' Function to select variables tracking
@@ -526,7 +527,7 @@ swaap_select.SBIRT <- function(
 #'
 #' @export
 
-swaap_select.substance_use <- function(
+swaap_select.substances <- function(
     chr_input = NULL,
     lgc_SBIRT = FALSE ) {
 

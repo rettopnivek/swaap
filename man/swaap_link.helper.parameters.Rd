@@ -13,7 +13,9 @@ swaap_link.helper.parameters(
 \arguments{
 \item{dtf_linked}{A data frame, output from the
 \link{swaap_link} function. Must have the column
-\code{LNK.CHR.AttributeWithParameters}.}
+\code{LNK.CHR.AttributeWithParameters}. Alternatively,
+set to \code{NULL} to see a reminder of the possible
+options for \code{'chr_input'}.}
 
 \item{chr_input}{A character string, either \code{'chr_method'},
 \code{'lst_sets'}, \code{'lst_items'}, \code{'lst_combos'},

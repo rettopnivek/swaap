@@ -3,20 +3,20 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-05
+# Last updated 2025-05-08
 
 # Table of contents
-# I) swaap_add.ID_column
-# Q) swaap_add.quality_checks
+# I) swaap_add.ID
+# Q) swaap_add.quality
 #   Q.1) fun_flag_for_removal
-# S) swaap_add.SBIRT_sample
+# S) swaap_add.SBIRT
 # S) swaap_add.school_enrollment
-# S) swaap_add.substance_use
+# S) swaap_add.substances
 # T) swaap_add.time_point
 # Y) swaap_add.year_and_semester
 #   Y.1) fun_update
 
-#### I) swaap_add.ID_column ####
+#### I) swaap_add.ID ####
 #' Add Identifier Variable
 #'
 #' Function to add an identifier variable
@@ -39,7 +39,7 @@
 #'
 #' @export
 
-swaap_add.ID_column <- function(
+swaap_add.ID <- function(
     dtf_data,
     chr_type ) {
 
@@ -101,7 +101,7 @@ swaap_add.ID_column <- function(
   return( dtf_data )
 }
 
-#### Q) swaap_add.quality_checks ####
+#### Q) swaap_add.quality ####
 #' Add Variables for Quality Checks
 #'
 #' Function to add variables with quality
@@ -126,7 +126,7 @@ swaap_add.ID_column <- function(
 #'
 #' @export
 
-swaap_add.quality_checks <- function(
+swaap_add.quality <- function(
     dtf_data ) {
 
   # Initialize variables
@@ -217,14 +217,14 @@ swaap_add.quality_checks <- function(
     ) |>
     data.frame()
 
-  attributes( dtf_data$QL.LGC.Remove ) <- list(
+  attributes( dtf_data$QLT.LGC.Remove ) <- list(
     swaap.summary_removed = dtf_summary
   )
 
   return( dtf_data )
 }
 
-#### S) swaap_add.SBIRT_sample ####
+#### S) swaap_add.SBIRT ####
 #' Add Variables Tracking SBIRT Sample
 #'
 #' Function to add variables indicating the
@@ -251,7 +251,7 @@ swaap_add.quality_checks <- function(
 #'
 #' @export
 
-swaap_add.SBIRT_sample <- function(
+swaap_add.SBIRT <- function(
     dtf_data ) {
 
   chr_columns <- colnames(dtf_data)
@@ -420,7 +420,68 @@ swaap_add.school_enrollment <- function(
   return( dtf_data )
 }
 
-#### S) swaap_add.substance_use ####
+#### S) swaap_add.source ####
+#' Add Details on Sources for Data
+#'
+#' Function to add a column with the
+#' attribute \code{'swaap.source_file_details'}
+#' detailing the date and package version
+#' used to prep data (and if supplied, the
+#' source files for the school-wide assessment
+#' data).
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#' @param chr_source_files A character vector,
+#'   the standardized file names for the
+#'   source school-wide assessment data.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A data frame with the additional
+#' column \code{'SSS.CHR.SourceFileDetails'}.
+#' Use the \code{attribute} function to
+#' extract the details.
+#'
+#' @export
+
+swaap_add.source <- function(
+    dtf_data,
+    chr_source_files = '' ) {
+
+  dtf_data$SSS.CHR.SourceFileDetails <-
+    'attributes(dtf_data$SSS.CHR.SourceFileDetails)'
+
+  lst_attr <- list(
+    swaap.source_file_details = list(
+      date = format( Sys.time(), '%Y-%m-%d %H:%M' ),
+      version = paste0(
+        'R package swaap (version ',
+        installed.packages()['swaap', 'Version'],
+        ')'
+      )
+    )
+  )
+
+  # If possible add source file names
+  if ( any( chr_source_files != '' ) ) {
+
+    lst_attr$swaap.source_file_details$files <- chr_source_files[
+      chr_source_files != ''
+    ]
+
+    # Close 'If possible add source file names'
+  }
+
+  attributes(
+    dtf_data$SSS.CHR.SourceFileDetails
+  ) <- lst_attr
+
+  return( dtf_data )
+}
+
+#### S) swaap_add.substances ####
 #' Add Substance Use Variables
 #'
 #' Function to add substance use variables
@@ -444,11 +505,11 @@ swaap_add.school_enrollment <- function(
 #' used, and past-year use. Note that
 #' only a subset of grades and time points
 #' would have been asked questions for
-#' number of days used and past-year use..
+#' number of days used and past-year use.
 #'
 #' @export
 
-swaap_add.substance_use <- function(
+swaap_add.substances <- function(
     dtf_data,
     chr_substance ) {
 

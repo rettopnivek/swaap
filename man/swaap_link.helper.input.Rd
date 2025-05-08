@@ -46,7 +46,7 @@ Helper function to generate input to pass to the \link{swaap_link}
 function.
 }
 \examples{
-dtf_long <- swaap_data( c('link', 'demo') )
+dtf_long <- swaap_simulate( 'link', 'demo' )
 
 lst_sets <- dtf_long |>
   swaap_link.helper.input( 'sets' )

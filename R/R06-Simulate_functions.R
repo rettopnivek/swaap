@@ -6,9 +6,37 @@
 # Last updated 2025-05-08
 
 # Table of contents
-
-
-
+# 1) swaap_simulate
+# L) Link
+#   L.D) swaap_simulate.link.debug
+#     L.D.1) Initialize data
+#     L.D.2) Standard linking + no links
+#     L.D.3) Dissimilarity = 1 [Base]
+#     L.D.4) Dissimilarity = 1 [Add]
+#     L.D.5) Duplicate records [Base]
+#     L.D.6) Duplicate records [Add]
+#     L.D.7) Subset dissimilarity = 0
+#     L.D.8) Dissimilarity off by 1
+#     L.D.9) Duplicate records w/ NA [Base]
+#     L.D.10) Duplicate records w/ NA [Add]
+#     L.D.11) Test of priority [School ID over questions]
+#     L.D.12) Link using different items by time point
+#     L.D.13) Special cases for duplicates
+#     L.D._) Final processing
+#   L.D) swaap_simulate.link.demo
+#     L.D.1) Initialize data
+#     L.D.2) Standard linking + no links
+#   L.D) swaap_simulate.link.duplicates
+#     L.D.1) Initialize data
+#     L.D.2) Unique
+#     L.D.3) Duplicates
+#     L.D.4) Duplicate SID + unique LQ
+#     L.D.5) Unique SID + duplicate LQ
+#     L.D.6) LQ off by 1
+#   L.R) swaap_simulate.link.realistic
+#   L.S) swaap_simulate.link.setup
+# S) SBIRT
+#   S.D) swaap_simulate.SBIRT.design
 
 #### 1) swaap_simulate ####
 #' Simulate data
@@ -88,7 +116,7 @@ swaap_simulate <- function(
     }
 
     # Data for demonstration purposes
-    if ( chr_type[2] %in% lst_subtypes$link$demo ) {
+    if ( chr_subtype %in% lst_subtypes$link$demo ) {
 
       return(
         swaap_simulate.link.demo(
@@ -100,7 +128,7 @@ swaap_simulate <- function(
     }
 
     # Data for duplicate records
-    if ( chr_type[2] %in% lst_subtypes$link$duplicates ) {
+    if ( chr_subtype %in% lst_subtypes$link$duplicates ) {
 
       return(
         swaap_simulate.link.duplicates(
@@ -1208,6 +1236,11 @@ swaap_simulate.link.demo <- function(
   dtf_long$LNK.INT.True.ID[ 1:9 ] <- 1:9
   dtf_long$LNK.INT.True.ID[ 1:9 + 9 ] <- 1:9
   dtf_long$LNK.INT.True.ID[ 1:9 + 9*2 ] <- 1:9
+
+  # Ensure unlinkable true ID is 0
+  dtf_long$LNK.INT.True.ID[
+    is.na( dtf_long$LNK.INT.True.ID )
+  ] <- 0
 
   return(dtf_long)
 }

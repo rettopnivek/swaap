@@ -49,16 +49,16 @@
 #       3.1.4.1) fun_combos
 #     3.1.5) Missing
 #       3.1.5.1) fun_missing
-#   3.2) swaap_link.helper.trim
-#   3.3) swaap_link.helper.parameters
-#   3.4) swaap_link.helper.rows
+#   3.2) swaap_link.helper.parameters
+#   3.3) swaap_link.helper.rows
+#   3.4) swaap_link.helper.trim
 #   3.5) swaap_link.helper.trim_rule
-#     3.5.1) ...
-#     3.5.2) ...
+#     3.5.1) List of defined rules
+#     3.5.2) Rules for trimming duplicates
 #       3.5.2.1) fun_rule.completed
 #       3.5.2.2) fun_rule.outcome_and_completed
-#       3.5.2.3) fun_rule.completed_and_items
-#   3.5) swaap_link.helper.similarity
+#     3.5.3) Return specified rule
+#   3.6) swaap_link.helper.similarity
 # 4) Report functions
 #   4.1) swaap_link.report.by_ID
 #   4.2) swaap_link.report
@@ -1169,7 +1169,7 @@ swaap_link.internal.assign_IDs <- function(
 #'
 #' @examples
 #' # Generate demonstration data
-#' dtf_long <- swaap_data( c( 'link', 'demo' ) )
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
 #' # Record linkage
 #' dtf_linked <- swaap_link( dtf_long )
 #'
@@ -1329,7 +1329,7 @@ swaap_link <- function(
   # Initialize row index
   dtf_long$IDN.INT.Row <- 1:nrow(dtf_long)
   # Initialize ID column for linking
-  dtf_long <- swaap::swaap_add.ID_column(
+  dtf_long <- swaap::swaap_add.ID(
     dtf_long,
     'Linked'
   )
@@ -1465,7 +1465,7 @@ swaap_link <- function(
 #' @returns A list structured in the relevant way for the given output.
 #'
 #' @examples
-#' dtf_long <- swaap_data( c('link', 'demo') )
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
 #'
 #' lst_sets <- dtf_long |>
 #'   swaap_link.helper.input( 'sets' )
@@ -3065,9 +3065,6 @@ swaap_link.report.by_ID <- function(
 #' @param lst_groups A named list of column names,
 #'   the grouping factors to consider when summarizing
 #'   the number of records linked.
-#' @param lgc_display A logical value; if \code{TRUE}
-#'   prints the results to the console in addition
-#'   to returning output as a list.
 #'
 #' @author Kevin Potter
 #'
@@ -3075,17 +3072,16 @@ swaap_link.report.by_ID <- function(
 #'
 #' @examples
 #' # Linking across time points
-#' dtf_long <- swaap_data( c( 'link', 'demo' ) )
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
 #' dtf_linked <- swaap_link(dtf_long)
-#' lst_summary <- swaap_link.report(
-#'   dtf_linked
-#' )
+#' lst_summary <- swaap_link.report(dtf_linked)
 #'
 #' @export
 
 swaap_link.report <- function(
     dtf_linked,
     lst_groups = list(
+      Wave = 'SSS.INT.LongitudinalWave',
       Time = 'SSS.INT.TimePoint'
     ) ) {
 
@@ -3118,6 +3114,26 @@ swaap_link.report <- function(
 
     return(chr_out)
   }
+
+  dtf_summary.overall <- dtf_linked |>
+    dplyr::group_by(
+      Wave = SSS.INT.LongitudinalWave,
+      Linkage = LNK.CHR.TimePoints
+    ) |>
+    dplyr::summarise(
+      Records = length(IDN.CHR.Linked.ID),
+      IDs = dplyr::n_distinct( IDN.CHR.Linked.ID )
+    ) |>
+    data.frame() |>
+    dplyr::mutate(
+      Percent = round(
+        100*IDs / sum( IDs ), 1
+      )
+    )
+
+  lst_output$linkage <- list(
+    overall = dtf_summary.overall
+  )
 
   # # Wide-form data with linkage patterns
   # dtf_IDs <- swaap::swaap_link.report.by_ID(
@@ -3280,7 +3296,7 @@ swaap_link.report <- function(
       # Close 'Loop over types'
     }
 
-    lst_output$true_ID <- dtf_summary.true_ID
+    lst_output$true <- dtf_summary.true_ID
 
     # Close 'If column with true IDs detected'
   }

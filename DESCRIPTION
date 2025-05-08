@@ -1,6 +1,6 @@
 Package: swaap
 Title: School-Wide Assessment Analysis Preparation
-Version: 0.99.0
+Version: 0.9.1
 Authors@R: 
   c(
     person(
@@ -32,4 +32,6 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
 Depends: 
     R (>= 2.10)
+Imports:
+    dplyr
 LazyData: true
