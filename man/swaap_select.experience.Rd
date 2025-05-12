@@ -17,3 +17,6 @@ A character vector.
 Function to select columns for school
 experience items.
 }
+\author{
+Kevin Potter
+}

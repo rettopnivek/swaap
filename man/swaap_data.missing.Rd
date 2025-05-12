@@ -41,3 +41,6 @@ Function that tallies the number
 of \code{NA} values per row over
 columns in a data set.
 }
+\author{
+Kevin Potter
+}

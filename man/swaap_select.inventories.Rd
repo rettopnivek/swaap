@@ -30,3 +30,6 @@ A character vector.
 \description{
 Function to select columns for inventories.
 }
+\author{
+Kevin Potter
+}

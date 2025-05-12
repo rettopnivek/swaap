@@ -22,3 +22,6 @@ Function to select columns with basic
 session information (e.g.,
 survey year, grade level, etc.).
 }
+\author{
+Kevin Potter
+}

@@ -37,3 +37,6 @@ by a label (typically the year and semester),
 followed by a separator and additional information
 (e.g., the date).
 }
+\author{
+Kevin Potter
+}

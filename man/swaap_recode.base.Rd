@@ -23,3 +23,6 @@ A data frame with the additional variables
 Renames variables with base information
 (school codes, record identifiers, etc.).
 }
+\author{
+Kevin Potter
+}

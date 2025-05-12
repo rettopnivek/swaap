@@ -12,6 +12,7 @@ swaap_data.merge(
   lgc_SBIRT = FALSE,
   lgc_remove_flagged = TRUE,
   chr_source_files = "",
+  int_grades = NULL,
   lgc_progress = TRUE
 )
 }
@@ -50,6 +51,9 @@ restricts the output only to the SBIRT sample.}
 remove records that fail initial quality checks
 (see \link{swaap_add.quality_checks}).}
 
+\item{int_grades}{An integer vector with values between
+6 and 12, the grade levels to include.}
+
 \item{lgc_progress}{A logical value; if \code{TRUE}
 displays the function's progress.}
 }
@@ -60,4 +64,7 @@ A data frame.
 Functions to merge multiple school-wide
 assessment data sets into single long-form
 data set.
+}
+\author{
+Kevin Potter
 }

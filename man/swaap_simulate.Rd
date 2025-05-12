@@ -27,3 +27,6 @@ the school-wide assessment project.
 dtf_debug <- swaap_simulate( 'link' )
 
 }
+\author{
+Kevin Potter
+}

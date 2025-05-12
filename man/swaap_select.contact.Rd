@@ -17,3 +17,6 @@ A character vector.
 Function to select standard contact
 information columns.
 }
+\author{
+Kevin Potter
+}

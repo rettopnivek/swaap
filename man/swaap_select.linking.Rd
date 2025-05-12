@@ -21,3 +21,6 @@ A character vector.
 Function to select standard linking
 item columns.
 }
+\author{
+Kevin Potter
+}

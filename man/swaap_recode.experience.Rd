@@ -22,3 +22,6 @@ A data frame with the additional variables
 \description{
 Recodes school experience items for easy selection.
 }
+\author{
+Kevin Potter
+}

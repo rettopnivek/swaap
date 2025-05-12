@@ -30,6 +30,8 @@
 #'   follow the standardized format for the
 #'   school-wide assessment data.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame.
 #'
 #' @export
@@ -53,6 +55,8 @@ swaap_select <- function(
 #
 # @param 'chr_input' A character vector.
 # @param 'chr_add' A character vector.
+#
+# @author Kevin Potter
 #
 # @returns A single character vector with
 # empty strings removed.
@@ -87,6 +91,8 @@ swaap_select.merge <- function(
 #' @param lgc_original A logical value; if
 #'   \code{TRUE} uses original variable
 #'   names instead of recoded ones.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'
@@ -151,6 +157,8 @@ swaap_select.base <- function(
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A character vector.
 #'
 #' @export
@@ -182,6 +190,8 @@ swaap_select.contact <- function(
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A character vector.
 #'
 #' @export
@@ -211,6 +221,8 @@ swaap_select.demographics <- function(
 #'
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'
@@ -247,6 +259,8 @@ swaap_select.experience <- function(
 #'   includes the individual items for each measure,
 #'   otherwise includes total scores and subscale
 #'   scores.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'
@@ -365,6 +379,8 @@ swaap_select.inventories <- function(
 #'   \code{TRUE} returns a subset of the
 #'   columns, the most useful typical details.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A character vector.
 #'
 #' @export
@@ -410,6 +426,8 @@ swaap_select.linked <- function(
 #' @param lgc_original A logical value; if
 #'   \code{TRUE} uses original variable
 #'   names instead of recoded ones.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'
@@ -469,6 +487,8 @@ swaap_select.linking <- function(
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
 #'
+#' @author Kevin POtter
+#'
 #' @returns A character vector.
 #'
 #' @export
@@ -522,6 +542,8 @@ swaap_select.SBIRT <- function(
 #'
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'

@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email us directly if you
 # have any questions or comments
-# Last updated: 2025-05-07
+# Last updated: 2025-05-12
 
 # Table of contents
 # 1) Internal functions
@@ -105,6 +105,8 @@
 #   for the relevant set in 'lst_items'.
 # @param 'lgc_progress' A logical value; if TRUE displays the
 #   progress of the function.
+#
+# @author Kevin Potter
 #
 # @returns A list, structured based on the given desired input.
 
@@ -444,6 +446,8 @@ swaap_link.internal.inputs <- function(
 # @param 'lgc_progress_bar' A logical value; if TRUE displays the
 #   progress of the function using a progress bar.
 #
+# @author Kevin Potter
+#
 # @returns A data frame with additional columns with details on
 # record linkage.
 
@@ -762,6 +766,8 @@ swaap_link.internal.via_dissimilarity <- function(
 # @param 'lgc_progress_bar' A logical value; if TRUE displays the
 #   progress of the function using a progress bar.
 #
+# @author Kevin Potter
+#
 # @returns A data frame.
 
 swaap_link.internal.via_group_by <- function(
@@ -943,6 +949,8 @@ swaap_link.internal.via_group_by <- function(
 #   progress of the function using section labels.
 # @param 'lgc_progress_bar' A logical value; if TRUE displays the
 #   progress of the function using a progress bar.
+#
+# @author Kevin Potter
 #
 # @returns A data frame.
 
@@ -1382,16 +1390,6 @@ swaap_link <- function(
       lgc_progress_bar = lgc_progress_bar
     )
 
-  #### 2.4) Final trimming of duplicates ####
-
-  # If specified
-  if ( lgc_remove_duplicates ) {
-
-    if (lgc_progress) message( '  Trim duplicates' )
-
-    # Close 'If specified'
-  }
-
   # Update data frame to have link patterns
   dtf_long <- dtf_long |>
     swaap::swaap_link.report.by_ID(
@@ -1399,6 +1397,99 @@ swaap_link <- function(
     )
   # Remove intermediary variable
   dtf_long$LNK.LGC.Preliminary <- NULL
+
+  #### 2.4) Final trimming of duplicates ####
+
+  # If specified
+  if ( lgc_remove_duplicates ) {
+
+    if (lgc_progress) message( '  Trim duplicates' )
+
+    if ( is.null(fun_trim_duplicates) )
+      fun_trim_duplicates <- swaap::swaap_link.helper.trim_rule(
+        'duplicate time points'
+      )
+
+    lgc_update <- FALSE
+
+    # Check if column already exists
+    if ( 'QLT.LGC.RemoveDuplicate' %in% colnames(dtf_long) ) {
+
+      # Copy column
+      lgc_remove <- dtf_long$QLT.LGC.RemoveDuplicate
+      lgc_update <- TRUE
+
+      # Close 'Check if column already exists'
+    }
+
+    dtf_long <- dtf_long |>
+      swaap::swaap_link.helper.trim(
+        fun_rule = fun_trim_duplicates
+      )
+
+    # Incorporate previous duplicate info
+    if ( lgc_update ) {
+
+      dtf_long$QLT.LGC.RemoveDuplicate[
+        lgc_remove %in% TRUE
+      ] <- TRUE
+      dtf_remove <- lgc_remove |> swaap::swaap_data.attr()
+      dtf_remove_new <-
+        dtf_long$QLT.LGC.RemoveDuplicate |>
+        swaap::swaap_data.attr()
+
+      # If possible combine as is
+      if ( !any( dtf_remove_new$Pattern %in% dtf_remove$Pattern ) ) {
+
+        dtf_remove <- rbind(
+          dtf_remove,
+          dtf_remove_new
+        )
+
+        # Close 'If possible combine as is'
+      } else {
+
+        # Loop over rows
+        for ( r in 1:nrow(dtf_remove_new) ) {
+
+          # Sum
+          if ( dtf_remove_new$Pattern[r] %in% dtf_remove$Pattern ) {
+
+            dtf_remove[
+              dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
+              -1
+            ] <- dtf_remove[
+              dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
+              -1
+            ] + dtf_remove_new[r, -1]
+
+            # Close 'Sum'
+          } else {
+
+            dtf_remove <- rbind(
+              dtf_remove,
+              dtf_remove_new[r, ]
+            )
+
+            # Close else for 'Sum'
+          }
+
+          # Close 'Loop over rows'
+        }
+
+        # Close else for 'If possible combine as is'
+      }
+
+      # Close 'Incorporate previous duplicate info'
+    }
+
+    dtf_long <- dtf_long |>
+      dplyr::filter(
+        !QLT.LGC.RemoveDuplicate
+      )
+
+    # Close 'If specified'
+  }
 
   # Track run time
   dtt_end <- Sys.time()
@@ -1425,7 +1516,6 @@ swaap_link <- function(
       )
     )
   )
-
 
   if ( chr_progress != '' ) message( '\n--End: swaap_link' )
 
@@ -1461,6 +1551,8 @@ swaap_link <- function(
 #'   items and combos input.
 #' @param lgc_progress A logical value; if\code{TRUE} tracks function
 #'   progress.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A list structured in the relevant way for the given output.
 #'
@@ -2592,6 +2684,8 @@ swaap_link.helper.rows <- function(
 #' @param lst_arg An optional list of additional arguments to
 #'   pass to the function for trimming.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame with a column \code{'QLT.LGC.RemoveDuplicate'}
 #' indicating rows to remove that fail to meet the rules.
 #'
@@ -2670,7 +2764,7 @@ swaap_link.helper.trim <- function(
         dplyr::n_distinct(
           dtf_long$IDN.CHR.Linked.ID[
             lgc_pattern &
-            dtf_long$QLT.LGC.RemoveDuplicate
+            !dtf_long$QLT.LGC.RemoveDuplicate
           ]
         )
 
@@ -2702,6 +2796,8 @@ swaap_link.helper.trim <- function(
 #'   that has a non-missing value for an outcome then
 #'   choose the record with the highest completion rate).
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame with a column \code{'QLT.LGC.RemoveDuplicate'}
 #' indicating rows to remove that fail to meet the rules.
 #'
@@ -2725,6 +2821,12 @@ swaap_link.helper.trim_rule <- function(
       'outcome + completed',
       'outcome and completion',
       'outcome + completion'
+    ),
+    duplicate_times = c(
+      'duplicate times',
+      'exclude duplicate times',
+      'duplicate time points',
+      'exclude duplicate time points'
     )
   )
 
@@ -2813,6 +2915,46 @@ swaap_link.helper.trim_rule <- function(
     return( !lgc_out )
   }
 
+  #### 3.5.2.3) fun_rule.duplicate_times ####
+  fun_rule.duplicate_times <- function(
+    dtf_long,
+    lst_arg = NULL ) {
+
+    lgc_out <- rep( FALSE, nrow(dtf_long) )
+
+    chr_patterns <- sort( unique( dtf_long$LNK.CHR.TimePoints ) )
+    chr_possible <- paste0(
+      sort( unique( dtf_long$SSS.INT.TimePoint ) ),
+      '-',
+      sort( unique( dtf_long$SSS.INT.TimePoint ) )
+    )
+
+    lgc_duplicates <- sapply(
+      chr_patterns, function(s) sapply(
+        chr_possible, function(p) grepl( p, s, fixed = TRUE )
+      )
+    )
+
+    # Multiple time points
+    if ( !is.null( dim(lgc_duplicates ) ) ) {
+
+      lgc_duplicates <- apply( lgc_duplicates, 2, any )
+
+      # Close 'Multiple time points'
+    }
+
+    # Any duplicates
+    if ( any(lgc_duplicates) ) {
+
+      lgc_out <- dtf_long$LNK.CHR.TimePoints %in%
+        chr_patterns[!lgc_duplicates]
+
+      # Close 'Any duplicates'
+    }
+
+    return( !lgc_out )
+  }
+
   #### 3.5.3) Return specified rule ####
 
   if ( chr_rule %in% lst_rules$completed )
@@ -2820,6 +2962,9 @@ swaap_link.helper.trim_rule <- function(
 
   if ( chr_rule %in% lst_rules$outcome_and_completed )
     return( fun_rule.outcome_and_completed )
+
+  if ( chr_rule %in% lst_rules$duplicate_times )
+    return( fun_rule.duplicate_times )
 
   chr_err <- paste0(
     'Rule not found, possible options are:\n',
@@ -3338,6 +3483,8 @@ swaap_link.report <- function(
 #' @param num_adj ...
 #' @param mat_layout ...
 #' @param chr_colors ...
+#'
+#' @author Kevin Potter
 #'
 #' @returns A list with a) a data frame tracking
 #'   stable and discrepant items per each pair of

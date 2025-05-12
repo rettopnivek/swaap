@@ -51,3 +51,6 @@ Function to copy school-wide assessment
 data from Dropbox to a local folder, or
 at least provide path to specified data set.
 }
+\author{
+Kevin Potter
+}

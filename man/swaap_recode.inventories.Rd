@@ -23,3 +23,6 @@ A data frame with the additional variables
 \description{
 Renames inventory variables for easy selection.
 }
+\author{
+Kevin Potter
+}

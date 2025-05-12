@@ -62,3 +62,6 @@ items. Will generate a plot summarizing
 findings if specified. Users should carefully
 consider treatment of missing values when
 }
+\author{
+Kevin Potter
+}

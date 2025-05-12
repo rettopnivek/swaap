@@ -17,3 +17,6 @@ A character vector.
 Function to select variables tracking
 SBIRT sample details.
 }
+\author{
+Kevin Potter
+}

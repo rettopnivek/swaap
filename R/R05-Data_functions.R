@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-08
+# Last updated 2025-05-12
 
 # Table of contents
 # 1) swaap_data.merge
@@ -49,8 +49,12 @@
 #' @param lgc_remove_flagged A logical value; if \code{TRUE}
 #'   remove records that fail initial quality checks
 #'   (see [swaap::swaap_add.quality_checks]).
+#' @param int_grades An integer vector with values between
+#'   6 and 12, the grade levels to include.
 #' @param lgc_progress A logical value; if \code{TRUE}
 #'   displays the function's progress.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A data frame.
 #'
@@ -64,6 +68,7 @@ swaap_data.merge <- function(
     lgc_SBIRT = FALSE,
     lgc_remove_flagged = TRUE,
     chr_source_files = '',
+    int_grades = NULL,
     lgc_progress = TRUE ) {
 
   # List available functions
@@ -190,12 +195,35 @@ swaap_data.merge <- function(
     chr_select[ !lgc_no_header ] <-
     paste0( 'swaap_select.', chr_select[!lgc_no_header] )
 
+  # Use all provided grades
+  if ( is.null( int_grades ) ) {
+
+    int_grades <- sapply(
+      seq_along(lst_data), function(d) {
+        unique( lst_data[[d]]$SSS.INT.Grade )
+      }
+    ) |> unique() |> sort()
+
+    # Close 'Use all provided grades'
+  }
+
   # Loop over data sets
   for ( d in seq_along( lst_data ) ) {
 
     if ( lgc_progress ) message( paste0( '  Data set ', d ) )
 
     dtf_current <- lst_data[[ d ]]
+
+    # Add row for original data set
+    dtf_current$IDN.INT.OriginalRow <- 1:nrow(dtf_current)
+    # Add index for data set
+    dtf_current$IDN.INT.DataSet <- d
+
+    dtf_current <- dtf_current |>
+      dplyr::filter(
+        is.na( SSS.INT.Grade ) |
+        SSS.INT.Grade %in% int_grades
+      )
 
     if ( lgc_progress ) message( '    Add functions' )
 
@@ -242,6 +270,24 @@ swaap_data.merge <- function(
           chr_add[j],
           list( dtf_data = dtf_current,
                 chr_substance = 'Vapes' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Cigarettes' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Cigars' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Smokeless' )
         )
 
         # Close 'Adding substances'
@@ -300,12 +346,13 @@ swaap_data.merge <- function(
     if ( d > 1 ) {
 
       chr_long <- colnames(dtf_long)
+      chr_current <- colnames(dtf_current)
 
-      # Add missing columns if needed
-      if ( any( !chr_long %in% colnames(dtf_current) ) ) {
+      # Missing columns in current
+      if ( any(!chr_long %in% chr_current) ) {
 
         chr_missing <- chr_long[
-          !chr_long %in% colnames(dtf_current)
+          !chr_long %in% chr_current
         ]
 
         # Loop over missing columns
@@ -316,30 +363,94 @@ swaap_data.merge <- function(
           # Close 'Loop over missing columns'
         }
 
-        # Close 'Add missing columns if needed'
+
+        # Close 'Missing columns in current'
       }
 
-      # Close 'Add missing columns if needed'
-    }
+      # Missing columns in merged
+      if ( any(!chr_current %in% chr_long) ) {
 
-    # Add row for original data set
-    dtf_current$IDN.INT.OriginalRow <- 1:nrow(dtf_current)
-    # Add index for data set
-    dtf_current$IDN.INT.DataSet <- d
+        chr_missing <- chr_current[
+          !chr_current %in% chr_long
+        ]
+
+        # Loop over missing columns
+        for ( k in seq_along(chr_missing) ) {
+
+          dtf_long[[ chr_missing[k] ]] <- NA
+
+          # Close 'Loop over missing columns'
+        }
+
+        # Close 'Missing columns in merged'
+      }
+
+      # Close 'If not first data set'
+    }
 
     # Initialize data
     if ( d == 1 ) {
+
+      # Merge details on rows to remove
+      if ( 'QLT.LGC.Remove' %in% colnames(dtf_current) ) {
+
+        # Add column with data set
+        dtf_remove_current <- swaap::swaap_data.attr(
+          dtf_current$QLT.LGC.Remove
+        )
+        dtf_remove_current$Data <- unique(
+          dtf_current$SSS.CHR.DataSet
+        )
+        attributes( dtf_current$QLT.LGC.Remove ) <- list(
+          swaap.summary_removed = dtf_remove_current
+        )
+
+        # Close 'Merge details on rows to remove'
+      }
 
       dtf_long <- dtf_current
 
       # Close 'Initialize data'
     } else {
 
+      # Merge details on rows to remove
+      if ( 'QLT.LGC.Remove' %in% colnames(dtf_current) ) {
+
+        # Merge relevant attributes
+        dtf_remove_long <- swaap::swaap_data.attr(
+          dtf_long$QLT.LGC.Remove
+        )
+        # Add column with data set
+        dtf_remove_current <- swaap::swaap_data.attr(
+          dtf_current$QLT.LGC.Remove
+        )
+        dtf_remove_current$Data <- unique(
+          dtf_current$SSS.CHR.DataSet
+        )
+        # Update data frame
+        dtf_remove_long <- rbind(
+          dtf_remove_long,
+          dtf_remove_current
+        )
+
+        # Close 'Merge details on rows to remove'
+      }
+
       # Add current data
       dtf_long <- rbind(
         dtf_long,
         dtf_current
       )
+
+      # Merge details on rows to remove
+      if ( 'QLT.LGC.Remove' %in% colnames(dtf_current) ) {
+
+        attributes( dtf_long$QLT.LGC.Remove ) <- list(
+          swaap.summary_removed = dtf_remove_long
+        )
+
+        # Close 'Merge details on rows to remove'
+      }
 
       # Close else for 'Initialize data'
     }
@@ -398,6 +509,8 @@ swaap_data.merge <- function(
 #'   \code{'pattern'} returns a character
 #'   string of 0s and 1s per row where
 #'   1s denote NA values.
+#'
+#' @author Kevin Potter
 #'
 #' @returns Either a vector or a data frame.
 #'
@@ -513,6 +626,8 @@ swaap_data.missing <- function(
 #' @param lgc_full A logical value; if \code{TRUE}
 #'   returns the full conditional path of the files.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A labeled character vector of file paths.
 #'
 #' @export
@@ -565,6 +680,8 @@ swaap_data.files <- function(
 #' @param vec_values A vector of values with
 #'   attributes.
 #'
+#' @author Kevin Potter
+#'
 #' @returns The \code{swaap}-created attribute.
 #'
 #' @export
@@ -604,6 +721,8 @@ swaap_data.attr <- function(
 #'   or a vector of indices specifying a subset of
 #'   \code{dtf_data} to take.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame.
 #'
 #' @export
@@ -636,6 +755,8 @@ swaap_data.subset <- function(
 #   lists, where names must match column names
 #   in 'dtf_data' - if NULL, function will
 #   instead create this list.
+#
+# @author Kevin Potter
 #
 # @returns Either a list of copied attributes,
 # or if 'lst_attr_by_column' is provided, an
@@ -709,6 +830,8 @@ swaap_data.internal.copy_attr <- function(
 #'   files will not be copied.
 #' @param lgc_silent A logical value; if \code{TRUE}
 #'   suppresses warning messages.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A data frame with the file paths (both full
 #' and truncated to within the CAM Data Dropbox folder)
@@ -972,7 +1095,7 @@ swaap_data.download <- function(
   if ( !is.null( chr_copy_to ) ) {
 
     chr_source_info <- paste0(
-      'SWA-Source_info-',
+      'SWA-Download-Source-',
       format( Sys.time(), '%Y_%m_%d-%H_%M' ),
       '.csv'
     )

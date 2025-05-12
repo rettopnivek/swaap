@@ -17,3 +17,6 @@ A character vector.
 Function to select standard demographic
 measure columns.
 }
+\author{
+Kevin Potter
+}

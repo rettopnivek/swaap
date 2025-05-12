@@ -23,3 +23,6 @@ Function to return another function that implements
 a desired rule to trim flagged duplicates from a linked
 data set.
 }
+\author{
+Kevin Potter
+}

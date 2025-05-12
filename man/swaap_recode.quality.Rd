@@ -12,9 +12,14 @@ follow the standardized format for the
 school-wide assessment data.}
 }
 \value{
-A data frame with the additional variable
-\code{'QLT.DBL.ProportionCompleted.Total'}.
+A data frame with the additional variables
+\code{'QLT.DBL.ProportionCompleted.Total'},
+\code{'QLT.LGC.AttentionChecks.MetAll'}. and
+\code{'QLT.LGC.AttentionChecks.MetAtLeastOne'}.
 }
 \description{
 Renames quality control items for easy selection.
+}
+\author{
+Kevin Potter
 }

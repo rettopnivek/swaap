@@ -25,3 +25,6 @@ Renames standard demographic variables
 (age, biological sex, etc.). Prioritizes
 revised versions ending with \code{.R}.
 }
+\author{
+Kevin Potter
+}

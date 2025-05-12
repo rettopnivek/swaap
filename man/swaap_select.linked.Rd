@@ -21,3 +21,6 @@ A character vector.
 Function to select columns detailing
 linkage performance.
 }
+\author{
+Kevin Potter
+}

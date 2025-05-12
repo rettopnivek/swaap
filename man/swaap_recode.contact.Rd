@@ -21,3 +21,6 @@ A data frame with the additional variables
 \description{
 Renames contact information items for easy selection.
 }
+\author{
+Kevin Potter
+}

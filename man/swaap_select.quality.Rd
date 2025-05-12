@@ -17,3 +17,6 @@ A character vector.
 Function to select variables with
 quality control details.
 }
+\author{
+Kevin POtter
+}

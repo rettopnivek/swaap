@@ -1,5 +1,7 @@
 # Functions to add variables
-# Written by Kevin Potter
+# Written by ...
+#   Jasmeen Kaur
+#   Kevin Potter
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
@@ -909,73 +911,103 @@ swaap_add.time_point <- function(
 
   # Initialize variables
   dtf_data$SSS.INT.TimePoint <- NA
-  dtf_data$SSS.INT.LongitudinalWave <- 1
+  dtf_data$SSS.INT.LongitudinalWave <- NA
 
-  # Define time by survey year and semester
-  if ( !lgc_grade ) {
+  dtf_sequence <- data.frame(
+    Semester = rep( c( 'Fall', 'Spring' ), length(6:12) ),
+    Grades = rep( 6:12, each = 2 ),
+    Year = NA
+  )
+
+  int_wave <- 1
+
+  # Loop over years and semesters
+  for (j in 1:nrow(dtf_times) ) {
 
     # Loop over grades
-    for ( g in 1:nrow(dtf_grades) ) {
+    for (g in 1:nrow(dtf_grades) ) {
 
-      int_inc <-
-        as.numeric( dtf_times$SSS.CHR.Semester == 'Fall' )
+      lgc_subset <- rep( FALSE, nrow(dtf_data) )
+      int_TP <- rep( NA, nrow(dtf_data) )
 
-      # Loop over time points
-      for ( p in 1:nrow(dtf_times) ) {
+      dtf_sequence_cur <- dtf_sequence |>
+        dplyr::filter(
+          Grades >= dtf_grades$SSS.INT.Grade[g]
+        )
+      int_grades <- unique( dtf_sequence_cur$Grades )
 
-        int_grade_current <-
-          (dtf_grades$SSS.INT.Grade[g] - 1) + cumsum(int_inc)[p]
 
-        lgc_subset <-
-          dtf_data$SSS.INT.Grade %in% int_grade_current &
-          dtf_data$SSS.CHR.SurveyYearSemester %in%
-          dtf_times$SSS.CHR.SurveyYearSemester[p]
+      dtf_sequence_cur$Year <- rep(
+        dtf_times$SSS.INT.SurveyYear[j] + ( seq_along(int_grades) - 1 ),
+        each = 2
+      )
 
-        # If any rows exist
-        if ( any(lgc_subset) ) {
+      lgc_sequence_cur <- paste(
+        dtf_sequence_cur$Year,
+        dtf_sequence_cur$Semester
+      ) %in% dtf_times$SSS.CHR.SurveyYearSemester
 
-          dtf_data$SSS.INT.TimePoint[lgc_subset] <- p - 1
-          dtf_data$SSS.INT.LongitudinalWave[lgc_subset] <- g
+      # Any time points found
+      if ( any(lgc_sequence_cur) ) {
 
-          # Close 'If any rows exist'
+        dtf_sequence_cur <- dtf_sequence_cur[lgc_sequence_cur, ]
+        dtf_sequence_cur$TimePoint <-
+          dtf_sequence_cur$Grades - min(dtf_sequence_cur$Grades)
+        dtf_sequence_cur$TimePoint[
+          dtf_sequence_cur$Semester == 'Spring'
+        ] <- dtf_sequence_cur$TimePoint[
+          dtf_sequence_cur$Semester == 'Spring'
+        ] + .5
+
+        # Loop over sequence
+        for ( k in 1:nrow(dtf_sequence_cur) ) {
+
+          lgc_cases <-
+            dtf_data$SSS.INT.SurveyYear %in%
+              dtf_sequence_cur$Year[k] &
+            dtf_data$SSS.CHR.Semester %in%
+              dtf_sequence_cur$Semester[k] &
+            dtf_data$SSS.INT.Grade %in%
+              dtf_sequence_cur$Grades[k]
+
+          lgc_subset[lgc_cases] <- TRUE
+          int_TP[lgc_cases] <- dtf_sequence_cur$TimePoint[k]
+
+          # Close 'Loop over sequence'
         }
 
-        # Close 'Loop over time points'
+        # Any time points found
+        if ( any(lgc_subset) ) {
+
+          lgc_already <- !is.na( dtf_data$SSS.INT.TimePoint )
+
+          # Do not overwrite
+          if ( any(lgc_subset & !lgc_already) ) {
+
+            lgc_update <-
+              lgc_subset & !lgc_already
+
+            dtf_data$SSS.INT.LongitudinalWave[lgc_update] <-
+              int_wave
+
+            dtf_data$SSS.INT.TimePoint[lgc_update] <-
+              int_TP[lgc_update]
+
+            int_wave <- int_wave + 1
+
+            # Close 'Do not overwrite'
+          }
+
+          # Close 'Any time points found'
+        }
+
+        # Close 'Any time points found'
       }
 
       # Close 'Loop over grades'
     }
 
-    # Algorithm misses lowest grade collected at last time point
-    int_min_grade <- min( dtf_data$SSS.INT.Grade, na.rm = TRUE )
-    lgc_update <-
-      dtf_data$SSS.INT.Grade %in% int_min_grade &
-      is.na( dtf_data$SSS.INT.TimePoint )
-    dtf_data$SSS.INT.TimePoint[
-      lgc_update
-    ] <- max( dtf_data$SSS.INT.TimePoint, na.rm = TRUE )
-    dtf_data$SSS.INT.LongitudinalWave[
-      lgc_update
-    ] <- max( dtf_data$SSS.INT.LongitudinalWave, na.rm = TRUE ) + 1
-
-    # Close 'Define time by survey year and semester'
-  } else {
-
-    int_order <-
-      dtf_data$SSS.INT.Grade |> unique() |> sort()
-
-    # Loop over times
-    for ( i in seq_along(chr_order) ) {
-
-      lgc_subset <-
-        dtf_data$SSS.INT.Grade %in% int_order[i]
-
-      dtf_data$SSS.INT.TimePoint[lgc_subset] <- i - 1
-
-      # Close 'Loop over times'
-    }
-
-    # Close else for 'Define time by survey year and semester'
+    # Close 'Loop over years and semesters'
   }
 
   return( dtf_data )
@@ -1084,13 +1116,15 @@ swaap_add.year_and_semester <- function(
         return( lubridate::month(dtt_start))
       }
     )
+    # If no dates assume fall semester
+    if ( length(int_months) == 0 ) int_months <- 9:12
 
     # Median month
     int_median <- median( int_months, na.rm = TRUE )
 
     # Define semester based on median month
     chr_semester <- 'Spring'
-    if ( int_median %in% 9:12 ) chr_semester <- 'Fall'
+    if ( int_median >= 9 & int_median <= 12 ) chr_semester <- 'Fall'
 
     # Update variables
     dtf_data$SSS.CHR.DataSet[ lst_subsets[[s]] ] <-

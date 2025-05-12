@@ -18,3 +18,6 @@ A data frame.
 Function to select specified columns
 in a data set.
 }
+\author{
+Kevin Potter
+}

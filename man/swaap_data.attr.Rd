@@ -18,3 +18,6 @@ Function to extract attribute of a column
 created as part of a \code{swaap} function
 call.
 }
+\author{
+Kevin Potter
+}

@@ -20,3 +20,6 @@ A data frame.
 Function to subset a data frame while preserving
 any column attributes.
 }
+\author{
+Kevin Potter
+}

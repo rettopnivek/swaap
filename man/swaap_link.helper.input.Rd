@@ -60,3 +60,6 @@ lst_missing <- dtf_long |>
   )
 
 }
+\author{
+Kevin Potter
+}

@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-06
+# Last updated 2025-05-12
 
 # Table of contents
 # B) swaap_recode.base
@@ -25,6 +25,8 @@
 #' @param dtf_data A data frame, assumed to
 #'   follow the standardized format for the
 #'   school-wide assessment data.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
 #' \code{'SSS.INT.DistrictCode'},
@@ -83,6 +85,8 @@ swaap_recode.base <- function(
 #'   follow the standardized format for the
 #'   school-wide assessment data.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame with the additional variables
 #' \code{'SBJ.CHR.Contact.DateOfBirth'},
 #' \code{'SBJ.CHR.Contact.GuardianName'},
@@ -125,6 +129,8 @@ swaap_recode.contact <- function(
 #' @param dtf_data A data frame, assumed to
 #'   follow the standardized format for the
 #'   school-wide assessment data.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
 #' \code{'SBJ.INT.AgeInYears'},
@@ -239,6 +245,8 @@ swaap_recode.demographics <- function(
 #'   follow the standardized format for the
 #'   school-wide assessment data.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame with the additional variables
 #' \code{'SBJ.LGC.Experience.PlaySports'},
 #' \code{'SBJ.LGC.Experience.SuspensionsAny'},
@@ -331,6 +339,8 @@ swaap_recode.experience <- function(
 #' @param dtf_data A data frame, assumed to
 #'   follow the standardized format for the
 #'   school-wide assessment data.
+#'
+#' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
 #' \code{'INV.INT.AUDIT.Total'},
@@ -439,6 +449,8 @@ swaap_recode.inventories <- function(
 #'   follow the standardized format for the
 #'   school-wide assessment data.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame with the additional variables
 #' \code{'SBJ.INT.Link.SchoolCode'},
 #' \code{'SBJ.INT.Link.SchoolID'},
@@ -504,8 +516,12 @@ swaap_recode.linking <- function(
 #'   follow the standardized format for the
 #'   school-wide assessment data.
 #'
-#' @returns A data frame with the additional variable
-#' \code{'QLT.DBL.ProportionCompleted.Total'}.
+#' @author Kevin Potter
+#'
+#' @returns A data frame with the additional variables
+#' \code{'QLT.DBL.ProportionCompleted.Total'},
+#' \code{'QLT.LGC.AttentionChecks.MetAll'}. and
+#' \code{'QLT.LGC.AttentionChecks.MetAtLeastOne'}.
 #'
 #' @export
 
@@ -516,7 +532,15 @@ swaap_recode.quality <- function(
 
   if ( 'QCC.DBL.Completion.CrossSection' %in% chr_columns )
     dtf_data$QLT.DBL.ProportionCompleted.Total <-
-    dtf_data$QCC.DBL.Completion.CrossSection
+      dtf_data$QCC.DBL.Completion.CrossSection
+
+  if ( 'QCC.LGL.AttnChecks.OnlyCorrectResponses' %in% chr_columns )
+    dtf_data$QLT.LGC.AttentionChecks.MetAll <-
+      dtf_data$QCC.LGL.AttnChecks.OnlyCorrectResponses
+
+  if ( 'QCC.LGL.AttnChecks.AtleastOneCorrect' %in% chr_columns )
+    dtf_data$QLT.LGC.AttentionChecks.MetAtLeastOne <-
+      dtf_data$QCC.LGL.AttnChecks.AtleastOneCorrect
 
   return( dtf_data )
 }

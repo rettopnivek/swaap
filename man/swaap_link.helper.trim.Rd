@@ -30,3 +30,6 @@ first record with highest rate of completion)
 for subsequent trimming via the column
 \code{'QLT.LGC.RemoveDuplicate'}.
 }
+\author{
+Kevin Potter
+}

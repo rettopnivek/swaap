@@ -51,6 +51,8 @@
 #' @param ... Additional arguments to pass to the
 #'   internal data generation functions.
 #'
+#' @author Kevin Potter
+#'
 #' @returns A data frame.
 #'
 #' @examples

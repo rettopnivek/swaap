@@ -24,3 +24,6 @@ A data frame with the additional variables
 \description{
 Renames linking items for easy selection.
 }
+\author{
+Kevin Potter
+}
