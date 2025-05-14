@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-08
+# Last updated 2025-05-14
 
 # Table of contents
 # 1) swaap_simulate
@@ -106,7 +106,7 @@ swaap_simulate <- function(
     if ( chr_subtype == '' ) chr_subtype <- 'debug'
 
     # Data for debugging
-    if ( chr_type %in% lst_subtypes$link$debug ) {
+    if ( chr_subtype %in% lst_subtypes$link$debug ) {
 
       return(
         swaap_simulate.link.debug(
@@ -172,31 +172,31 @@ swaap_simulate.link.debug <- function(
   lst_setup <- swaap_simulate.link.setup()
 
   dtf_long <- lst_setup$design[
-    rep( 1, 156 ),
+    rep( 1, 140 ),
   ]
 
   dtf_long$IDX.INT.Origin.LASID <- c(
     # Standard linking
-    1, rep( NA, 8 ),
-    1, rep( NA, 8 ),
-    1, rep( NA, 8 ),
+    1, rep( NA, 7 ),
+    1, rep( NA, 7 ),
+    1, rep( NA, 7 ),
     # No links
-    2, rep( NA, 8 ),
-    3, rep( NA, 8 ),
-    4, rep( NA, 8 ),
+    2, rep( NA, 7 ),
+    3, rep( NA, 7 ),
+    4, rep( NA, 7 ),
     # Specific tests
     # + Dissimilarity = 1 [Base]
-    rep( NA, 3 ) |> rep(7),
+    rep( NA, 3 ) |> rep(6),
     # + Dissimilarity = 1 [Add]
-    rep( NA, 3 ) |> rep(7),
+    rep( NA, 3 ) |> rep(6),
     # + Duplicate records [Base]
     rep( NA, 3 ),
     # + Duplicate records [Add]
     rep( NA, 3 ),
     # + Subset dissimilarity = 0
-    rep( NA, 7 ) |> rep(2),
+    rep( NA, 6 ) |> rep(2),
     # + Dissimilarity off by 1
-    rep( NA, 7 ) |> rep(2),
+    rep( NA, 6 ) |> rep(2),
     # + Duplicate records w/ NA [Base]
     rep( NA, 3 ),
     # + Duplicate records w/ NA [Add]
@@ -217,22 +217,22 @@ swaap_simulate.link.debug <- function(
   )
   dtf_long$SSS.INT.School.Code <- c(
     # Standard linking
-    rep( 1, 9*3 ),
+    rep( 1, 8*3 ),
     # No links
-    rep( 1, 9*3 ),
+    rep( 1, 8*3 ),
     # Specific tests
     # + Dissimilarity = 1 [Base]
-    c(1, 1, 1) |> rep(7),
+    c(1, 1, 1) |> rep(6),
     # + Dissimilarity = 1 [Add]
-    c(1, 1, 1) |> rep(7),
+    c(1, 1, 1) |> rep(6),
     # + Duplicate records [Base]
     rep( 1, 3 ),
     # + Duplicate records [Add]
     rep( 1, 3 ),
     # + Subset dissimilarity = 0
-    rep( 1, 7 ) |> rep(2),
+    rep( 1, 6 ) |> rep(2),
     # + Dissimilarity off by 1
-    rep( 1, 7 ) |> rep(2),
+    rep( 1, 6 ) |> rep(2),
     # + Duplicate records w/ NA [Base]
     rep( 1, 3 ),
     # + Duplicate records w/ NA [Add]
@@ -253,26 +253,26 @@ swaap_simulate.link.debug <- function(
   )
   dtf_long$SSS.INT.TimePoint <- c(
     # Standard linking
-    rep( 0, 9 ),
-    rep( 1, 9 ),
-    rep( 2, 9 ),
+    rep( 0, 8 ),
+    rep( 1, 8 ),
+    rep( 2, 8 ),
     # No links
-    rep( 0, 9 ),
-    rep( 1, 9 ),
-    rep( 2, 9 ),
+    rep( 0, 8 ),
+    rep( 1, 8 ),
+    rep( 2, 8 ),
     # Specific tests
     # + Dissimilarity = 1 [Base]
-    c(0, 0, 1) |> rep(7),
+    c(0, 0, 1) |> rep(6),
     # + Dissimilarity = 1 [Add]
-    c(0, 1, 1) |> rep(7),
+    c(0, 1, 1) |> rep(6),
     # + Duplicate records [Base]
     c(0, 0, 1),
     # + Duplicate records [Add]
     c(0, 1, 1),
     # + Subset dissimilarity = 0
-    c( 0, 1 ) |> rep(7),
+    c( 0, 1 ) |> rep(6),
     # + Dissimilarity off by 1
-    c( 0, 1 ) |> rep(7),
+    c( 0, 1 ) |> rep(6),
     # + Duplicate records w/ NA [Base]
     c(0, 0, 1),
     # + Duplicate records w/ NA [Add]
@@ -293,22 +293,22 @@ swaap_simulate.link.debug <- function(
   )
   dtf_long$LNK.LGC.True.Linkable <- c(
     # Standard linking
-    rep( TRUE, 9*3 ),
+    rep( TRUE, 8*3 ),
     # No links
-    rep( FALSE, 9*3 ),
+    rep( FALSE, 8*3 ),
     # Specific tests
     # + Dissimilarity = 1 [Base]
-    c(TRUE, FALSE, TRUE) |> rep(7),
+    c(TRUE, FALSE, TRUE) |> rep(6),
     # + Dissimilarity = 1 [Add]
-    c(TRUE, FALSE, TRUE) |> rep(7),
+    c(TRUE, FALSE, TRUE) |> rep(6),
     # + Duplicate records [Base]
     rep( TRUE, 3 ),
     # + Duplicate records [Add]
     rep( TRUE, 3 ),
     # + Subset dissimilarity = 0
-    c( FALSE, FALSE ) |> rep(7),
+    c( FALSE, FALSE ) |> rep(6),
     # + Off-by-one error
-    c( TRUE, TRUE ) |> rep(7),
+    c( TRUE, TRUE ) |> rep(6),
     # + Duplicate records w/ NA [Base]
     rep( TRUE, 3 ),
     # + Duplicate records w/ NA [Add]
@@ -349,52 +349,59 @@ swaap_simulate.link.debug <- function(
 
   chr_linking_questions <- lst_setup$linking_questions$variables
 
+  # Kindergarten year calculated from year and grade
+  dtf_long$SBJ.INT.Link.KindergartenYearEst <-
+    c( 2023, 2023, 2024 )[ # Use start of school year
+      dtf_long$SSS.INT.TimePoint + 1
+    ] - dtf_long$SSS.INT.Grade
+
   #### L.D.2) Standard linking + no links ####
 
   # Standard linking + no links
-  for ( l in 1:7 ) {
+  for ( l in 1:6 ) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
     int_unique <- c(
       # Standard linking
-      2:9,
+      2:8,
       # No link
-      (9*3 + 1):(9*6)
+      (8*3 + 1):(8*6)
     )
 
-    dtf_long[[ chr_linking_questions[l] ]][int_unique] <- sample(
-      dtf_possible[[1]],
-      size = length(int_unique),
-      replace = TRUE,
-      prob = dtf_possible[[2]]
+    dtf_long[[ chr_linking_questions[l+1] ]][int_unique] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = length(int_unique),
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
     )
 
     # Copy cases that should be linked
-    dtf_long[[ chr_linking_questions[l] ]][2:9 + 9] <-
-      dtf_long[[ chr_linking_questions[l] ]][2:9]
-    dtf_long[[ chr_linking_questions[l] ]][2:9 + 9*2] <-
-      dtf_long[[ chr_linking_questions[l] ]][2:9]
+    dtf_long[[ chr_linking_questions[l+1] ]][2:8 + 8] <-
+      dtf_long[[ chr_linking_questions[l+1] ]][2:8]
+    dtf_long[[ chr_linking_questions[l+1] ]][2:8 + 8*2] <-
+      dtf_long[[ chr_linking_questions[l+1] ]][2:8]
 
     # Close 'Standard linking'
   }
 
   # Track actual links
-  dtf_long$LNK.INT.True.ID[ 1:9 ] <- 1:9
-  dtf_long$LNK.INT.True.ID[ 1:9 + 9 ] <- 1:9
-  dtf_long$LNK.INT.True.ID[ 1:9 + 9*2 ] <- 1:9
+  dtf_long$LNK.INT.True.ID[ 1:8 ] <- 1:8
+  dtf_long$LNK.INT.True.ID[ 1:8 + 8 ] <- 1:8
+  dtf_long$LNK.INT.True.ID[ 1:8 + 8*2 ] <- 1:8
 
   # Label test type
-  dtf_long$LNK.CHR.True.TestType[ 1:(9*3) ] <-
+  dtf_long$LNK.CHR.True.TestType[ 1:(8*3) ] <-
     'Standard linking'
-  dtf_long$LNK.CHR.True.TestType[ (9*3) + 1:(9*3) ] <-
+  dtf_long$LNK.CHR.True.TestType[ (8*3) + 1:(8*3) ] <-
     'Standard no link'
 
   # Update indices
-  int_old <- 9*6
-  int_ID_old <- 9
+  int_old <- 8*6
+  int_ID_old <- 8
 
   #### L.D.3) Dissimilarity = 1 [Base] ####
 
@@ -404,48 +411,47 @@ swaap_simulate.link.debug <- function(
     c( 1, 2, 1 ) + 2*2,
     c( 1, 2, 1 ) + 2*3,
     c( 1, 2, 1 ) + 2*4,
-    c( 1, 2, 1 ) + 2*5,
-    c( 1, 2, 1 ) + 2*6
+    c( 1, 2, 1 ) + 2*5
   )
   int_new <- seq_along(int_ID)
   lst_new <- lapply(
-    1:7, function(l) {
+    1:6, function(l) {
       1:3 + 3*(l-1)
     }
   )
 
   # Loop over variables to differ
-  for ( v in 1:7 ) {
+  for ( v in 1:6 ) {
 
     # Loop over linking items
-    for (l in 1:7) {
+    for (l in 1:6) {
 
       dtf_possible <- lst_setup$linking_questions$possible[[
-        chr_linking_questions[l]
+        chr_linking_questions[l+1]
       ]]
 
       # Item to differ
       if ( l == v ) {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 2,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 2,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )[c(1, 2, 1)]
 
         # Close 'Item to differ'
       } else {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 1,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 1,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close else for 'Item to differ'
@@ -477,48 +483,47 @@ swaap_simulate.link.debug <- function(
     c( 1, 2, 1 ) + 2*2,
     c( 1, 2, 1 ) + 2*3,
     c( 1, 2, 1 ) + 2*4,
-    c( 1, 2, 1 ) + 2*5,
-    c( 1, 2, 1 ) + 2*6
+    c( 1, 2, 1 ) + 2*5
   )
   int_new <- seq_along(int_ID)
   lst_new <- lapply(
-    1:7, function(l) {
+    1:6, function(l) {
       1:3 + 3*(l-1)
     }
   )
 
   # Loop over variables to differ
-  for ( v in 1:7 ) {
+  for ( v in 1:6 ) {
 
     # Loop over linking items
-    for (l in 1:7) {
+    for (l in 1:6) {
 
       dtf_possible <- lst_setup$linking_questions$possible[[
-        chr_linking_questions[l]
+        chr_linking_questions[l+1]
       ]]
 
       # Item to differ
       if ( l == v ) {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 2,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 2,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )[c(1, 2, 1)]
 
         # Close 'Item to differ'
       } else {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 1,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 1,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close else for 'Item to differ'
@@ -548,19 +553,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -584,19 +589,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -616,49 +621,48 @@ swaap_simulate.link.debug <- function(
 
   #### L.D.7) Subset dissimilarity = 0 ####
 
-  int_ID <- 1:14
+  int_ID <- 1:12
   lst_new <- list(
     1:2,
     3:4,
     5:6,
     7:8,
     9:10,
-    11:12,
-    13:14
+    11:12
   )
 
   # Loop over variables to differ
-  for ( v in 1:7 ) {
+  for ( v in 1:6 ) {
 
     # Loop over linking items
-    for (l in 1:7) {
+    for (l in 1:6) {
 
       dtf_possible <- lst_setup$linking_questions$possible[[
-        chr_linking_questions[l]
+        chr_linking_questions[l+1]
       ]]
 
       # Item to differ
       if ( l == v ) {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 2,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 2,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close 'Item to differ'
       } else {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 1,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 1,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close else for 'Item to differ'
@@ -685,49 +689,48 @@ swaap_simulate.link.debug <- function(
 
   #### L.D.8) Dissimilarity off by 1 ####
 
-  int_ID <- rep( 1:7, each = 2 )
+  int_ID <- rep( 1:6, each = 2 )
   lst_new <- list(
     1:2,
     3:4,
     5:6,
     7:8,
     9:10,
-    11:12,
-    13:14
+    11:12
   )
 
   # Loop over variables to differ
-  for ( v in 1:7 ) {
+  for ( v in 1:6 ) {
 
     # Loop over linking items
-    for (l in 1:7) {
+    for (l in 1:6) {
 
       dtf_possible <- lst_setup$linking_questions$possible[[
-        chr_linking_questions[l]
+        chr_linking_questions[l+1]
       ]]
 
       # Item to differ
       if ( l == v ) {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 2,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 2,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close 'Item to differ'
       } else {
 
-        dtf_long[[ chr_linking_questions[l] ]][
+        dtf_long[[ chr_linking_questions[l+1] ]][
           int_old + lst_new[[v]]
-        ] <- sample(
+        ] <- swaap_simulate.link.sample(
           dtf_possible[[1]],
-          size = 1,
-          replace = FALSE,
-          prob = dtf_possible[[2]]
+          int_size = 1,
+          lgc_replace = FALSE,
+          int_freq = NULL # dtf_possible[[2]]
         )
 
         # Close else for 'Item to differ'
@@ -758,28 +761,28 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Select variable to be missing
-  int_missing <- sample( 1:7, size = 1 )
+  int_missing <- sample( 1:6, size = 1 )
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Set missing value in 2nd base record
     if ( l == int_missing ) {
 
-      dtf_long[[ chr_linking_questions[l] ]][
+      dtf_long[[ chr_linking_questions[l+1] ]][
         int_old + int_new
       ][2] <- NA
 
@@ -807,28 +810,28 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Select variable to be missing
-  int_missing <- sample( 1:7, size = 1 )
+  int_missing <- sample( 1:6, size = 1 )
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Set missing value in 1st add record
     if ( l == int_missing ) {
 
-      dtf_long[[ chr_linking_questions[l] ]][
+      dtf_long[[ chr_linking_questions[l+1] ]][
         int_old + int_new
       ][2] <- NA
 
@@ -856,19 +859,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:2
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 2,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 2,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -892,19 +895,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new[-1]
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -930,19 +933,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:4
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -966,32 +969,32 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:4
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # One item off
-    if (l == 6) {
+    if (l == 5) {
 
-      chr_val <- sample(
+      chr_val <- swaap_simulate.link.sample(
         dtf_possible[[1]],
-        size = 2,
-        replace = FALSE,
-        prob = dtf_possible[[2]]
+        int_size = 2,
+        lgc_replace = FALSE,
+        int_freq = NULL # dtf_possible[[2]]
       )
 
-      dtf_long[[ chr_linking_questions[l] ]][
+      dtf_long[[ chr_linking_questions[l+1] ]][
         int_old + int_new
       ] <- c(
         chr_val[1], NA, chr_val[2], chr_val[2]
@@ -1024,19 +1027,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:3
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -1060,19 +1063,19 @@ swaap_simulate.link.debug <- function(
   int_new <- 1:4
 
   # Loop over linking items
-  for (l in 1:7) {
+  for (l in 1:6) {
 
     dtf_possible <- lst_setup$linking_questions$possible[[
-      chr_linking_questions[l]
+      chr_linking_questions[l+1]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][
+    dtf_long[[ chr_linking_questions[l+1] ]][
       int_old + int_new
-    ] <- sample(
+    ] <- swaap_simulate.link.sample(
       dtf_possible[[1]],
-      size = 1,
-      replace = FALSE,
-      prob = dtf_possible[[2]]
+      int_size = 1,
+      lgc_replace = FALSE,
+      int_freq = NULL # dtf_possible[[2]]
     )
 
     # Close 'Loop over linking items'
@@ -1218,12 +1221,13 @@ swaap_simulate.link.demo <- function(
       (9*3 + 1):(9*6)
     )
 
-    dtf_long[[ chr_linking_questions[l] ]][int_unique] <- sample(
-      dtf_possible[[1]],
-      size = length(int_unique),
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )
+    dtf_long[[ chr_linking_questions[l] ]][int_unique] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = length(int_unique),
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )
 
     # Copy cases that should be linked
     dtf_long[[ chr_linking_questions[l] ]][2:9 + 9] <-
@@ -1429,12 +1433,13 @@ swaap_simulate.link.duplicates <- function(
       chr_linking_questions[l]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][int_pos] <- sample(
-      dtf_possible[[1]],
-      size = 8*2,
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )
+    dtf_long[[ chr_linking_questions[l] ]][int_pos] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = 8*2,
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )
 
     # Set one value to missing
     dtf_long[[ chr_linking_questions[l] ]][
@@ -1462,12 +1467,13 @@ swaap_simulate.link.duplicates <- function(
       chr_linking_questions[l]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][int_pos] <- sample(
-      dtf_possible[[1]],
-      size = 8,
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )[int_rep]
+    dtf_long[[ chr_linking_questions[l] ]][int_pos] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = 8,
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )[int_rep]
 
     # Set one value to missing
     dtf_long[[ chr_linking_questions[l] ]][
@@ -1505,12 +1511,13 @@ swaap_simulate.link.duplicates <- function(
       chr_linking_questions[l]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][int_pos] <- sample(
-      dtf_possible[[1]],
-      size = 2,
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )
+    dtf_long[[ chr_linking_questions[l] ]][int_pos] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = 2,
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )
 
     # Close 'Unique LQ'
   }
@@ -1539,12 +1546,13 @@ swaap_simulate.link.duplicates <- function(
       chr_linking_questions[l]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][int_pos] <- sample(
-      dtf_possible[[1]],
-      size = 1,
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )
+    dtf_long[[ chr_linking_questions[l] ]][int_pos] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = 1,
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )
 
     # Close 'Duplicates'
   }
@@ -1577,12 +1585,13 @@ swaap_simulate.link.duplicates <- function(
       chr_linking_questions[l]
     ]]
 
-    dtf_long[[ chr_linking_questions[l] ]][int_pos] <- sample(
-      dtf_possible[[1]],
-      size = 6,
-      replace = TRUE,
-      prob = dtf_possible[[2]]
-    )[int_rep]
+    dtf_long[[ chr_linking_questions[l] ]][int_pos] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = 6,
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )[int_rep]
 
     # Set one value to be different
     lgc_diff <-
@@ -1591,11 +1600,11 @@ swaap_simulate.link.duplicates <- function(
       ][(int_rep+1) %in% l][1] )
     dtf_long[[ chr_linking_questions[l] ]][
       int_pos
-    ][(int_rep+1) %in% l][1] <- sample(
+    ][(int_rep+1) %in% l][1] <- swaap_simulate.link.sample(
       dtf_possible[[1]][lgc_diff],
-      size = 1,
-      replace = TRUE,
-      prob = dtf_possible[[2]][lgc_diff]
+      int_size = 1,
+      lgc_replace = TRUE,
+      int_freq = NULL # dtf_possible[[2]][lgc_diff]
     )
 
     # Close 'Duplicates'
@@ -1622,6 +1631,52 @@ swaap_simulate.link.realistic <- function() {
 
 }
 
+#### L.S) swaap_simulate.link.sample ####
+
+swaap_simulate.link.sample <- function(
+    vec_values,
+    int_size,
+    lgc_replace = FALSE,
+    int_freq = NULL ) {
+
+  # Special case of single value
+  if ( length(vec_values) == 1 ) {
+
+    vec_out <- rep( vec_values, int_size )
+
+    # Close 'Special case of single value'
+  } else {
+
+    # Equal or more
+    if ( length(vec_values) >= int_size ) {
+
+      vec_out <- sample(
+        vec_values,
+        size = int_size,
+        replace = lgc_replace,
+        prob = int_freq
+      )
+
+      # Close 'Equal or more'
+    } else {
+
+      # Replacement TRUE by necessity
+      vec_out <- sample(
+        vec_values,
+        size = int_size,
+        replace = TRUE,
+        prob = int_freq
+      )
+
+      # Close else for 'Equal or more'
+    }
+
+    # Close else for 'Special case of single value'
+  }
+
+  return( vec_out )
+}
+
 #### L.S) swaap_simulate.link.setup ####
 
 swaap_simulate.link.setup <- function() {
@@ -1646,33 +1701,40 @@ swaap_simulate.link.setup <- function() {
       ),
       possible = list(
         SBJ.INT.Link.KindergartenYearEst =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.INT.Link.KindergartenYearEst'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.FCT.Sex =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.FCT.Sex'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.DTM.Dob =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.DTM.Dob'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.FCT.Link.MiddleInitial =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.FCT.Link.MiddleInitial'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.FCT.Link.EyeColor =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.FCT.Link.EyeColor'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.FCT.Link.OlderSiblings =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.FCT.Link.OlderSiblings'
-          ]],
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq ),
         SBJ.CHR.Link.Streetname =
-          swaap_internal.linking_items_marginal_rates$exclude_NA[[
+          swaap:::swaap_internal.linking_items_marginal_rates[[
             'SBJ.CHR.Link.Streetname'
-          ]]
+          ]] |> dplyr::filter( !is.na(Values) & Grade %in% 9 ) |>
+          dplyr::select( Values, Freq )
       )
     ),
     design = data.frame(

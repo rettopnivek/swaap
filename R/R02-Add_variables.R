@@ -5,7 +5,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-08
+# Last updated 2025-05-12
 
 # Table of contents
 # I) swaap_add.ID
@@ -13,6 +13,7 @@
 #   Q.1) fun_flag_for_removal
 # S) swaap_add.SBIRT
 # S) swaap_add.school_enrollment
+# S) swaap_add.source
 # S) swaap_add.substances
 # T) swaap_add.time_point
 # Y) swaap_add.year_and_semester
@@ -146,9 +147,9 @@ swaap_add.quality <- function(
     vec_value = NULL ) {
 
     # If column exists
-    if ( any( chr_check %in% chr_check ) ) {
+    if ( any( chr_check %in% chr_columns ) ) {
 
-      chr_check <- chr_check[ chr_check %in% chr_check ][1]
+      chr_check <- chr_check[ chr_check %in% chr_columns ][1]
 
       # Check for NA value
       if ( chr_type %in% 'NA' ) {
@@ -205,6 +206,42 @@ swaap_add.quality <- function(
       'Not in grades 6-12',
       chr_type = 'value',
       vec_value = 13
+    )
+
+  dtf_data <- dtf_data |>
+    fun_flag_for_removal(
+      c(
+        'SBJ.DTM.Dob',
+        'SBJ.CHR.Link.BirthYearMonth'
+      ),
+      'Inadmissable birth year and month',
+      chr_type = 'value',
+      vec_value = c(
+        "1226-12",
+        "1342-10",
+        "1400-03",
+        "16-08-0",
+        "1812-01",
+        "19-10-0",
+        "1987-09",
+        "1990-03",
+        "200-12-",
+        "2046-02",
+        "207-01-",
+        "207-05-",
+        "207-10-",
+        "209-05-",
+        "22-10-0",
+        "2220-10",
+        "23-01-0",
+        "23-09-0",
+        "2806-09",
+        "31-03-0",
+        "31-12-0",
+        "4-11-01",
+        "6-06-01",
+        "8-01-01"
+      )
     )
 
   dtf_summary <- dtf_data |>

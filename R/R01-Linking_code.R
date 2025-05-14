@@ -3225,10 +3225,7 @@ swaap_link.report.by_ID <- function(
 
 swaap_link.report <- function(
     dtf_linked,
-    lst_groups = list(
-      Wave = 'SSS.INT.LongitudinalWave',
-      Time = 'SSS.INT.TimePoint'
-    ) ) {
+    lst_groups = NULL ) {
 
   lst_output <- list()
 
@@ -3262,29 +3259,47 @@ swaap_link.report <- function(
 
   dtf_summary.overall <- dtf_linked |>
     dplyr::group_by(
-      Wave = SSS.INT.LongitudinalWave,
+      Any = grepl( '-', LNK.CHR.TimePoints ),
       Linkage = LNK.CHR.TimePoints
     ) |>
     dplyr::summarise(
       Records = length(IDN.CHR.Linked.ID),
-      IDs = dplyr::n_distinct( IDN.CHR.Linked.ID )
+      IDs = dplyr::n_distinct( IDN.CHR.Linked.ID ),
+      .groups = 'drop'
     ) |>
     data.frame() |>
     dplyr::mutate(
       Percent = round(
         100*IDs / sum( IDs ), 1
-      )
+      ),
+      Collapsed = ''
     )
+  dtf_summary.overall$Collapsed[
+    which( dtf_summary.overall$Any )[1]
+  ] <- round( 100*sum(
+    dtf_summary.overall$IDs[ dtf_summary.overall$Any ]
+  ) / sum(
+    dtf_summary.overall$IDs
+  ), 1 )
+  dtf_summary.overall$Collapsed[
+    which( !dtf_summary.overall$Any )[1]
+  ] <- round( 100*sum(
+    dtf_summary.overall$IDs[ !dtf_summary.overall$Any ]
+  ) / sum(
+    dtf_summary.overall$IDs
+  ), 1 )
 
   lst_output$linkage <- list(
     overall = dtf_summary.overall
   )
 
-  # # Wide-form data with linkage patterns
-  # dtf_IDs <- swaap::swaap_link.report.by_ID(
-  #   dtf_linked
-  # )
-  #
+  # Wide-form data with linkage patterns
+  dtf_IDs <- swaap::swaap_link.report.by_ID(
+    dtf_linked
+  )
+
+
+
   # # Initialize output
   # lst_output <- list()
   #

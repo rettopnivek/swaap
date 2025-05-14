@@ -4,10 +4,7 @@
 \alias{swaap_link.report}
 \title{Summary of Linking of Records}
 \usage{
-swaap_link.report(
-  dtf_linked,
-  lst_groups = list(Wave = "SSS.INT.LongitudinalWave", Time = "SSS.INT.TimePoint")
-)
+swaap_link.report(dtf_linked, lst_groups = NULL)
 }
 \arguments{
 \item{dtf_linked}{A data frame, the output

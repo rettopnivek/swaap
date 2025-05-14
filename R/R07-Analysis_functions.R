@@ -5,6 +5,10 @@
 # have any questions or comments
 # Last updated 2025-05-12
 
+# Table of contents
+# 1) swaap_analysis.prep_project
+# 2) swaap_analysis.source_scripts
+
 #### 1) swaap_analysis.prep_project ####
 #' Prep Analysis Project
 #'

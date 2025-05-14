@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-12
+# Last updated 2025-05-13
 
 # Table of contents
 # 1) swaap_data.merge
@@ -13,6 +13,9 @@
 # 5) swaap_data.subset
 #   5.1) swaap_data.internal.copy_attr
 # 6) swaap_data.download
+# 7) swaap_data.replace
+# 8) swaap_data.replace_defaults
+# 9) swaap_data.static
 
 #### 1) swaap_data.merge ####
 #' Merge Multiple Data Sets
@@ -1115,18 +1118,466 @@ swaap_data.download <- function(
   return( dtf_output )
 }
 
-#### 7) ... ####
+#### 7) swaap_data.replace ####
+#' Replace Values per User Specification
+#'
+#' Function to replace a vector of values with a
+#' single value based on conditional logic.
+#'
+#' @param vec_values A vector of values.
+#' @param lst_comparison A list of of vectors, different
+#'   comparisons to test against \code{vec_values}.
+#' @param chr_action A character vector, the type of
+#'   action to conduct for each comparison given in
+#'   \code{lst_comparison}.
+#' @param vec_replacement A vector of values matching
+#'   in length with \code{lst_comparison} and \code{chr_action},
+#'   what to return when a given condition is met.
+#' @param obj_default A value, the default output to return
+#'   if no conditions are met.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A single value as defined in \code{vec_replacement}.
+#'
+#' @examples
+#' swaap_data.replace( c( 'A', NA ), list( 'A' ), 'all', 'A', NA )
+#'
+#' @export
 
-# swaap_data.normalize <- function(
-#     dtf_data,
-#     chr_variable ) {
-#
-#   lst_variables <- list(
-#     race = c(
-#       'SBJ.CHR.Race'
-#     )
-#   )
-#
-# }
+swaap_data.replace <- function(
+    vec_values,
+    lst_comparison,
+    chr_action,
+    vec_replacement,
+    obj_default ) {
+
+  # Loop over options
+  for (o in seq_along(lst_comparison) ) {
+
+    # All non-missing match
+    if ( chr_action[o] == 'all' ) {
+
+      lgc_check <- all(
+        vec_values[ !is.na(vec_values) ] %in% lst_comparison[[o]]
+      )
+
+      if ( lgc_check )
+        return( vec_replacement[o] )
+
+      # Close 'All non-missing match'
+    }
+
+    # Any non-missing match
+    if ( chr_action[o] == 'any' ) {
+
+      lgc_check <- any(
+        vec_values[ !is.na(vec_values) ] %in% lst_comparison[[o]]
+      )
+
+      if ( lgc_check )
+        return( vec_replacement[o] )
+
+      # Close 'Any non-missing match'
+    }
+
+    # At least 2 different matches
+    if ( chr_action[o] == 'combo' ) {
+
+      lgc_check <- sum(
+        lst_comparison[[o]] %in% vec_values[ !is.na(vec_values) ]
+      ) > 1
+
+      if ( lgc_check )
+        return( vec_replacement[o] )
+
+      # Close 'At least 2 different matches'
+    }
+
+    # Close 'Loop over options'
+  }
+
+  return( obj_default )
+}
+
+#### 8) swaap_data.replace_defaults ####
+#' Default Options for swaap_data.replace
+#'
+#' Function that generates a list of inputs for
+#' [swaap::swaap_data.replace] based on a given
+#' column and additional options.
+#'
+#' @param chr_column A character string, the column
+#'   name.
+#' @param chr_option A character string, additional
+#'   options to consider when generating inputs.
+#' @param chr_coding A character string. Use the
+#'   options \code{'dummy'} or \code{'effect'} to
+#'   convert values to a desired numeric coding scheme.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A list of inputs for [swaap::swaap_data.replace].
+#'
+#' @export
+
+swaap_data.replace_defaults <- function(
+    chr_column,
+    chr_option = '',
+    chr_coding = '' ) {
+
+  chr_columns <- c(
+    Sex = 'SBJ.CHR.Sex',
+    Race = 'SBJ.CHR.Race',
+    Ethnicity = 'SBJ.CHR.Ethnicity'
+  )
+
+  lst_coding <- list(
+    dummy = c(
+      "dummy",
+      "Dummy",
+      "dummy coding",
+      "Dummy coding",
+      "dummy coded",
+      "Dummy coded",
+      "indicator",
+      "Indicator",
+      "indicator coding",
+      "Indicator coding"
+    ),
+    effect = c(
+      "effect",
+      "Effect",
+      "effect coding",
+      "Effect coding",
+      "deviation",
+      "Deviation",
+      "deviation coding",
+      "Deviation coding"
+    )
+  )
+
+  # Biological sex
+  if ( chr_column == chr_columns['Sex'] ) {
+
+    lst_replace <- list(
+      # Comparison
+      list(
+        "Male",
+        "Female",
+        c(
+          "Male",
+          "Female"
+        )
+      ),
+      # Action
+      c( "all", "all", "combo" ),
+      # Replacement
+      c( "Male",
+         "Female",
+         NA ),
+      # Default
+      NA,
+      # Static
+      c( TRUE, TRUE, FALSE )
+    )
+
+    # Use dummy coding
+    if ( chr_coding %in% lst_coding$dummy ) {
+
+      lst_replace[[3]] <- c(
+        0, # Referent: Male
+        1,
+        1
+      )
+
+      # Close 'Use dummy coding'
+    }
+
+    # Use effect coding
+    if ( chr_coding %in% lst_coding$effect ) {
+
+      lst_replace[[3]] <- c(
+        -1, # Referent: Male
+         1,
+         1
+      )
+
+      # Close 'Use effect coding'
+    }
+
+    return( lst_replace )
+
+    # Close 'Ethnicity'
+  }
+
+  # Race
+  if ( chr_column == chr_columns['Race'] ) {
+
+    lst_replace <- list(
+      # Comparison
+      list(
+        # All x 8
+        "American Indian/Alaska Native",
+        "Asian",
+        "Haitian, Black or African American",
+        "Hawaiian or Other Pacific Islander",
+        "Middle Eastern/North African",
+        "Multiracial",
+        "Other",
+        "White",
+        c(
+          "American Indian/Alaska Native",
+          "Asian",
+          "Haitian, Black or African American",
+          "Hawaiian or Other Pacific Islander",
+          "Middle Eastern/North African",
+          "Multiracial",
+          "Other",
+          "White"
+        )
+      ),
+      # Action
+      c(
+        # All x 8
+        rep( "all", 8 ),
+        # Convert to multiracial
+        "combo"
+      ),
+      # Replacement
+      c(
+        # All x 8
+        "American Indian/Alaska Native",
+        "Asian",
+        "Haitian, Black or African American",
+        "Hawaiian or Other Pacific Islander",
+        "Middle Eastern/North African",
+        "Multiracial",
+        "Other",
+        "White",
+        # Convert to multiracial
+        "Multiracial"
+      ),
+      # Default
+      NA,
+      # Static
+      c(
+        # All x 8
+        rep( TRUE, 8 ),
+        # Convert to multiracial
+        FALSE
+      )
+    )
+
+    # Close 'Race'
+  }
+
+  # Ethnicity
+  if ( chr_column == chr_columns['Ethnicity'] ) {
+
+    lst_replace <- list(
+      # Comparison
+      list(
+        "Hispanic/ Latino(a)",
+        "Not Hispanic/ Latino(a)",
+        c(
+          "Hispanic/ Latino(a)",
+          "Not Hispanic/ Latino(a)"
+        )
+      ),
+      # Action
+      c( "all", "all", "combo" ),
+      # Replacement
+      c( "Hispanic/Latino(a)",
+         "Not Hispanic/Latino(a)",
+         "Hispanic/Latino(a)" ),
+      # Default
+      NA,
+      # Static
+      c( TRUE, TRUE, FALSE )
+    )
+
+    # Use dummy coding
+    if ( chr_coding %in% lst_coding$dummy ) {
+
+      lst_replace[[3]] <- c(
+        1,
+        0, # Referent: Not Hispanic/Latino(a)
+        1
+      )
+
+      # Close 'Use dummy coding'
+    }
+
+    # Use effect coding
+    if ( chr_coding %in% lst_coding$effect ) {
+
+      lst_replace[[3]] <- c(
+         1,
+        -1, # Referent: Not Hispanic/Latino(a)
+         1
+      )
+
+      # Close 'Use effect coding'
+    }
+
+    return( lst_replace )
+
+    # Close 'Ethnicity'
+  }
+
+  stop(
+    "Check argument 'chr_type'"
+  )
+}
+
+#### 9) swaap_data.static ####
+#' Create Static Variant of a Variable
+#'
+#' Function that will create a static variable
+#' in which values are consistent across multiple
+#' time points.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#' @param chr_variable A character string, the
+#'   column to update to ensure static values
+#'   across time points.
+#' @param chr_new A character vector of up to
+#'   two values, the new column names for
+#'   (1) the revised static variable, and
+#'   (2) a quality check variable indicating
+#'   cases that had to be recoded to be static.
+#' @param chr_ID A character string, the column
+#'   name for the identifier.
+#' @param lst_replace An optional list of
+#'   inputs for [swaap::swaap_data.replace].
+#'
+#' @returns A data frame with up to two new columns.
+#'
+#' @export
+
+swaap_data.static <- function(
+    dtf_data,
+    chr_variable,
+    chr_new = '',
+    chr_ID = 'IDN.CHR.Linked.ID',
+    lst_replace = NULL ) {
+
+  # Debugging
+  if ( FALSE ) {
+
+    dtf_data <- data.frame(
+      IDN.CHR.Linked.ID = c(
+        1, 1, 1, 2, 2, 2, 3, 3, 3
+      ),
+      SBJ.CHR.Ethnicity = c(
+        "Hispanic/ Latino(a)",
+        "Hispanic/ Latino(a)",
+        NA,
+        NA,
+        "Not Hispanic/ Latino(a)",
+        "Not Hispanic/ Latino(a)",
+        "Not Hispanic/ Latino(a)",
+        NA,
+        "Hispanic/ Latino(a)"
+      )
+    )
+
+    # Close 'Debugging'
+  }
+
+  # Default option for replacement parameters
+  if ( is.null(lst_replace) ) {
+
+    lst_replace <- swaap_data.replace_defaults(
+      chr_variable
+    )
+
+    # Close 'Default option for replacement parameters'
+  }
+
+  # If indicated track if variable is static
+  if ( !is.null(lst_replace[[5]] ) ) {
+
+    lst_replace[[2]] <- paste0(
+      lst_replace[[2]], 'STATIC=', lst_replace[[5]]
+    )
+
+    # Close 'If indicated track if variable is static'
+  }
+
+  if ( !chr_ID %in% colnames(dtf_data) )
+    stop( 'ID column not found' )
+
+  chr_IDs <- unique( dtf_data[[ chr_ID ]] )
+
+  # Ensure two column names
+  if ( length(chr_new) == 1 ) {
+
+    chr_new <- c( chr_new, '' )
+
+    # Close 'Ensure two column names'
+  }
+
+  # Default name for new column of values
+  if ( chr_new[1] == '' ) {
+
+    chr_new[1] <- paste0( chr_variable, '.Static' )
+
+    # Close 'Default name for new column of values'
+  }
+
+  # Default name for quality control variable
+  if ( chr_new[2] == '' ) {
+
+    chr_new[2] <- gsub(
+      substr( chr_new[1], 1, 3 ),
+      'QLT',
+      chr_new[1],
+      fixed = TRUE
+    )
+    chr_new[2] <- gsub(
+      substr( chr_new[1], 5, 7 ),
+      'LGC',
+      chr_new[2],
+      fixed = TRUE
+    )
+
+    # Close 'Default name for quality control variable'
+  }
+
+  dtf_collapsed <- dtf_data |>
+    dplyr::group_by_at( chr_ID ) |>
+    dplyr::summarise_at(
+      chr_variable,
+      swaap_data.replace,
+      lst_comparison = lst_replace[[1]],
+      chr_action = lst_replace[[2]],
+      vec_replacement = lst_replace[[3]],
+      obj_default = lst_replace[[4]],
+      lgc_static = lst_replace[[5]]
+    ) |>
+    data.frame()
+
+  colnames(dtf_collapsed)[2] <- chr_new[1]
+  dtf_collapsed[[ chr_new[2] ]] <- grepl(
+    'STATIC=TRUE',
+    dtf_collapsed[[ chr_new[1] ]],
+    fixed = TRUE
+  )
+
+  if ( all( !dtf_collapsed[[ chr_new[2] ]] ) )
+    dtf_collapsed[[ chr_new[2] ]] <- NULL
+
+  dtf_data <- dtf_data |>
+    dplyr::left_join(
+      dtf_collapsed,
+      by = chr_ID
+    )
+
+  return( dtf_data )
+}
 
 

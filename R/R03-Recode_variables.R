@@ -479,17 +479,79 @@ swaap_recode.linking <- function(
     dtf_data$SBJ.CHR.Link.Sex <-
     dtf_data$SBJ.FCT.Sex
 
-  # Restrict to birth year and month
-  if ( 'SBJ.DTM.Dob' %in% chr_columns ) {
+  chr_year <- c(
+    'SBJ.INT.BirthYear.R',
+    'SBJ.INT.BirthYear'
+  )
+  chr_month <- c(
+    'SBJ.INT.BirthMonth',
+    'SBJ.INT.BirthMonth.R'
+  )
+
+  # Birth year and month
+  if ( any(chr_year %in% chr_columns) &
+       any(chr_month %in% chr_columns) ) {
+
+    chr_year <- chr_year[
+      chr_year %in% chr_columns
+    ][1]
+    chr_month <- chr_month[
+      chr_month %in% chr_columns
+    ][1]
 
     dtf_data$SBJ.CHR.Link.BirthYearMonth <-
-      substr(
-        as.character( dtf_data$SBJ.DTM.Dob ),
-        start = 1,
-        stop = 7
+      paste0(
+        dtf_data[[ chr_year ]],
+        '-',
+        dtf_data[[ chr_month ]]
       )
 
-    # Close 'Restrict to birth year and month'
+    # Check for inadmissable values
+    lgc_NA <-
+      !( dtf_data[[ chr_month ]] %in% 1:12 ) |
+      !( dtf_data[[ chr_year ]] %in% 2000:2016 )
+
+    dtf_data$SBJ.CHR.Link.BirthYearMonth[lgc_NA] <- NA
+
+    # Close 'Birth year and month'
+  } else {
+
+    # Restrict to birth year and month
+    if ( 'SBJ.DTM.Dob' %in% chr_columns ) {
+
+      dtf_data$SBJ.CHR.Link.BirthYearMonth <-
+        substr(
+          as.character( dtf_data$SBJ.DTM.Dob ),
+          start = 1,
+          stop = 7
+        )
+
+      chr_check <- c(
+        'SBJ.INT.AgeInYears',
+        'SBJ.INT.Age.R',
+        'SBJ.INT.Age'
+      )
+
+      # If possible remove strange dates
+      if ( any( chr_check %in% chr_columns ) ) {
+
+        chr_check <- chr_check[
+          chr_check %in% chr_columns
+        ][1]
+
+        lgc_NA <- is.na(
+          dtf_data[[ chr_check ]]
+        )
+
+        dtf_data$SBJ.CHR.Link.BirthYearMonth[lgc_NA] <- NA
+
+        # Close 'If possible remove strange dates'
+      }
+
+      # Close 'Restrict to birth year and month'
+    }
+
+    # Close else for 'Birth year and month'
   }
 
   if ( 'SBJ.FCT.Link.OlderSiblings' %in% chr_columns )
