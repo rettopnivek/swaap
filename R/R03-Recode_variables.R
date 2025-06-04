@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-12
+# Last updated 2025-05-16
 
 # Table of contents
 # B) swaap_recode.base
@@ -437,6 +437,67 @@ swaap_recode.inventories <- function(
       na.rm = TRUE
     )
 
+  #### 1.3) ERS ####
+
+  chr_items <- c(
+    "INV.INT.ERS.Q01.Persistence1",
+    "INV.INT.ERS.Q02.Sensitivity1",
+    "INV.INT.ERS.Q03.IntensityArousal1",
+    "INV.INT.ERS.Q04.IntensityArousal2",
+    "INV.INT.ERS.Q05.Sensitivity2",
+    "INV.INT.ERS.Q06.IntensityArousal3",
+    "INV.INT.ERS.Q07.Sensitivity3",
+    "INV.INT.ERS.Q08.Persistence2",
+    "INV.INT.ERS.Q09.Sensitivity4",
+    "INV.INT.ERS.Q10.Persistence3",
+    "INV.INT.ERS.Q11.Persistence4",
+    "INV.INT.ERS.Q12.Sensitivity5",
+    "INV.INT.ERS.Q13.Sensitivity6",
+    "INV.INT.ERS.Q14.Sensitivity7",
+    "INV.INT.ERS.Q15.Sensitivity8",
+    "INV.INT.ERS.Q16.Sensitivity9",
+    "INV.INT.ERS.Q17.IntensityArousal4",
+    "INV.INT.ERS.Q18.Sensitivity10",
+    "INV.INT.ERS.Q19.IntensityArousal5",
+    "INV.INT.ERS.Q20.IntensityArousal6",
+    "INV.INT.ERS.Q21.IntensityArousal7"
+  )
+  chr_labels <- c(
+    'P.UpsetLongTime', # 1
+    'S.HurtEasily', # 2
+    'I.FeelIntensely', # 3
+    'I.PhysicallyUpset', # 4
+    'S.EmotionalEasily', # 5
+    'I.EmotionsStrongly', # 6
+    'S.OftenAnxious', # 7
+    'P.FeelOther', # 8
+    'S.LittlestThings', # 9
+    'P.DisagreementLong', # 10
+    'P.LongerToCalmDown', # 11
+    'S.AngryEasily', # 12
+    'S.Bothered', # 13
+    'S.EasilyAgitated', # 14
+    'S.EmotionsInstant', # 15
+    'S.ShortFuse', # 16
+    'I.EmotionsTooIntense', # 17
+    'S.SensitivePerson', # 18
+    'I.MoodsPowerful', # 19
+    'I.HardToThink', # 20
+    'I.Overreacting' # 21
+  )
+
+  # Loop over items
+  for ( i in seq_along(chr_items) ) {
+
+    if ( chr_items[i] %in% chr_columns )
+      dtf_data[[
+        paste0( 'INV.INT.ERS.Q', i, '.', chr_labels[i] )
+      ]] <-
+        as.numeric( dtf_data[[ chr_items[i] ]] )
+
+    # Close 'Loop over items'
+  }
+
   return( dtf_data )
 }
 
@@ -458,7 +519,16 @@ swaap_recode.inventories <- function(
 #' \code{'SBJ.CHR.Link.BirthYearMonth'},
 #' \code{'SBJ.CHR.Link.OlderSiblings'},
 #' \code{'SBJ.CHR.Link.EyeColor'}, and
-#' \code{'SBJ.CHR.Link.MiddleInitial'}.
+#' \code{'SBJ.CHR.Link.MiddleInitial'} for
+#' standard linking, and
+#' \code{SBJ.INT.Link.FL.Sex},
+#' \code{SBJ.CHR.Link.FL.MiddleInitial},
+#' \code{SBJ.CHR.Link.FL.StreetName},
+#' \code{SBJ.INT.Link.FL.EyeColor},
+#' \code{SBJ.INT.Link.FL.Siblings},
+#' \code{SBJ.CHR.Link.FL.SiblingBirthMonth}, and
+#' \code{SBJ.CHR.Link.FL.BirthYearMonth} for
+#' linking with [fastLink::fastLink].
 #'
 #' @export
 
@@ -565,6 +635,116 @@ swaap_recode.linking <- function(
   if ( 'SBJ.FCT.Link.MiddleInitial' %in% chr_columns )
     dtf_data$SBJ.CHR.Link.MiddleInitial <-
     dtf_data$SBJ.FCT.Link.MiddleInitial
+
+  # Create recoded variables specific for using 'fastLink'
+
+  # Recode biological sex
+  if ( 'SBJ.CHR.Link.Sex' %in% colnames(dtf_data) ) {
+
+    dtf_data$SBJ.INT.Link.FL.Sex <- NA
+    dtf_data$SBJ.INT.Link.FL.Sex[
+      dtf_data$SBJ.CHR.Link.Sex %in% 'Male'
+    ] <- 1
+    dtf_data$SBJ.INT.Link.FL.Sex[
+      dtf_data$SBJ.CHR.Link.Sex %in% 'Female'
+    ] <- 2
+
+    # Close 'Recode biological sex'
+  }
+
+  # Recode middle initial
+  if ( 'SBJ.CHR.Link.MiddleInitial' %in% colnames(dtf_data) ) {
+
+    chr_initial <- dtf_data$SBJ.CHR.Link.MiddleInitial
+    lgc_NMI <- chr_initial %in% 'no middle name'
+    chr_initial[lgc_NMI] <- '0'
+    dtf_data$SBJ.CHR.Link.FL.MiddleInitial <- chr_initial
+
+    # Close 'Recode middle initial'
+  }
+
+  # Recode street name
+  if ( 'SBJ.CHR.Link.Streetname' %in% colnames(dtf_data) ) {
+
+    chr_street <- dtf_data$SBJ.CHR.Link.Streetname
+    lgc_2 <- nchar( chr_street ) %in% 2
+    chr_street[lgc_2] <- paste0(
+      chr_street[lgc_2], '1'
+    )
+    lgc_1 <- nchar( chr_street ) %in% 1
+    chr_street[lgc_1] <- paste0(
+      chr_street[lgc_1], '11'
+    )
+    dtf_data$SBJ.CHR.Link.FL.StreetName <- chr_street
+
+    # Close 'Recode middle initial'
+  }
+
+  # Recode eye color
+  if ( 'SBJ.CHR.Link.EyeColor' %in% colnames(dtf_data) ) {
+
+    dtf_data$SBJ.INT.Link.FL.EyeColor <- as.numeric(
+      as.factor( dtf_data$SBJ.CHR.Link.EyeColor)
+    ) + 1
+
+    # Close 'Recode eye color'
+  }
+
+  # Recode older siblings
+  if ( 'SBJ.CHR.Link.OlderSiblings' %in% colnames(dtf_data) ) {
+
+    dtf_data$SBJ.INT.Link.FL.Siblings <-
+      substr( dtf_data$SBJ.CHR.Link.OlderSiblings, 1, 1 )
+    dtf_data$SBJ.INT.Link.FL.Siblings[
+      dtf_data$SBJ.INT.Link.FL.Siblings %in% 'n'
+    ] <- '0'
+    dtf_data$SBJ.INT.Link.FL.Siblings <- as.numeric(
+      dtf_data$SBJ.INT.Link.FL.Siblings
+    )
+
+    dtf_data$SBJ.CHR.Link.FL.SiblingBirthMonth <- NA
+    lgc_NOS <- dtf_data$SBJ.CHR.Link.OlderSiblings %in%
+      'no older siblings'
+    dtf_data$SBJ.CHR.Link.FL.SiblingBirthMonth[lgc_NOS] <-
+      'Not'
+
+    # Loop over months
+    for ( m in seq_along(month.name) ) {
+
+      lgc_month <- grepl(
+        month.name[m],
+        dtf_data$SBJ.CHR.Link.OlderSiblings
+      )
+      dtf_data$SBJ.CHR.Link.FL.SiblingBirthMonth[
+        lgc_month %in% TRUE
+      ] <- month.abb[m]
+
+      # Close 'Loop over months'
+    }
+
+    # Close 'Recode older siblings'
+  }
+
+  # Recode birth year and month
+  if ( 'SBJ.CHR.Link.BirthYearMonth' %in% colnames(dtf_data) ) {
+
+    dtf_data$SBJ.CHR.Link.FL.BirthYearMonth <- NA
+
+    chr_year_abbr <- substr( dtf_data$SBJ.CHR.Link.BirthYearMonth, 3, 4 )
+    chr_month <- substr( dtf_data$SBJ.CHR.Link.BirthYearMonth, 6, 7 )
+    chr_month[ chr_month %in% as.character(1:9) ] <- paste0(
+      '0', chr_month[ chr_month %in% as.character(1:9) ]
+    )
+
+    dtf_data$SBJ.CHR.Link.FL.BirthYearMonth <- paste0(
+      chr_year_abbr, chr_month
+    )
+    dtf_data$SBJ.CHR.Link.FL.BirthYearMonth[
+      grepl( 'NA', dtf_data$SBJ.CHR.Link.FL.BirthYearMonth )
+    ] <- NA
+
+    # Close 'Recode birth year and month'
+  }
 
   return( dtf_data )
 }

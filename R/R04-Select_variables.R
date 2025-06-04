@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-08
+# Last updated 2025-05-16
 
 # Table of contents
 # 1) swaap_select
@@ -426,6 +426,10 @@ swaap_select.linked <- function(
 #' @param lgc_original A logical value; if
 #'   \code{TRUE} uses original variable
 #'   names instead of recoded ones.
+#' @param lgc_fastLink A logical value; if
+#'   \code{TRUE} returns column names for
+#'   variables specifically formatted to
+#'   work with [fastLink::fastLink].
 #'
 #' @author Kevin Potter
 #'
@@ -435,7 +439,8 @@ swaap_select.linked <- function(
 
 swaap_select.linking <- function(
     chr_input = NULL,
-    lgc_original = FALSE ) {
+    lgc_original = FALSE,
+    lgc_fastLink = FALSE ) {
 
   chr_add <- c(
     'SBJ.INT.Link.SchoolCode',
@@ -468,6 +473,27 @@ swaap_select.linking <- function(
       'SBJ.FCT.Link.EyeColor',
       'SBJ.FCT.Link.OlderSiblings',
       'SBJ.CHR.Link.Streetname'
+    )
+
+    # Close 'Original variable names'
+  }
+
+  # Original variable names
+  if (lgc_fastLink) {
+
+    chr_add <- c(
+      chr_add[1],
+      # Locally assigned school ID
+      chr_add[2],
+      # Linking questions
+      #   ranked from least to most discrepant
+      'SBJ.INT.Link.FL.Sex',
+      'SBJ.CHR.Link.FL.BirthYearMonth',
+      'SBJ.CHR.Link.FL.MiddleInitial',
+      'SBJ.INT.Link.FL.EyeColor',
+      'SBJ.INT.Link.FL.Siblings',
+      'SBJ.CHR.Link.FL.SiblingBirthMonth',
+      'SBJ.CHR.Link.FL.StreetName'
     )
 
     # Close 'Original variable names'
@@ -535,10 +561,10 @@ swaap_select.SBIRT <- function(
 }
 
 #### 3.S) swaap_select.substances ####
-#' Select Variables Denoting SBIRT Sample
+#' Select Variables Measuring Substance Use
 #'
-#' Function to select variables tracking
-#' SBIRT sample details.
+#' Function to select variables with self-reported
+#' substance use details.
 #'
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
@@ -556,7 +582,10 @@ swaap_select.substances <- function(
   chr_abbr <- c(
     'ALC',
     'CNN',
-    'VPS'
+    'VPS',
+    'CIG',
+    'CGR',
+    'SMK'
   )
   chr_add <- c()
 
@@ -567,29 +596,67 @@ swaap_select.substances <- function(
       chr_add,
       # Lifetime use
       paste0(
-        'SBS.LGC.', chr_abbr, '.Lifetime.Any'
+        'SBS.LGC.', chr_abbr[s], '.Lifetime.Any'
       ),
       # 7-point rating for use [Integer]
       paste0(
-        'SBS.INT.', chr_abbr, '.Past31.UseRating'
+        'SBS.INT.', chr_abbr[s], '.Past31.UseRating'
       ),
       # 7-point rating for use [Character]
       paste0(
-        'SBS.CHR.', chr_abbr, '.Past31.UseRating'
+        'SBS.CHR.', chr_abbr[s], '.Past31.UseRating'
       )
     )
 
+    # Add binge drinking for alcohol
+    if ( 'ALC' %in% chr_abbr[s] ) {
+
+      chr_add <- c(
+        chr_add,
+        'SBS.INT.ALC.Past31.BingeRating',
+        'SBS.CHR.ALC.Past31.BingeRating'
+      )
+
+      # Close 'Add binge drinking for alcohol'
+    }
+
+    # Additional variables for SBIRT sample
+    if (lgc_SBIRT) {
+
+      # Alcohol/Cannabis/Vapes
+      if ( chr_abbr[s] %in% chr_abbr[1:3] ) {
+
+        chr_add <- c(
+          chr_add,
+          # Number of days used [Not all surveys]
+          paste0(
+            'SBS.INT.', chr_abbr[s], '.Past31.DaysUsed'
+          ),
+          # Past-year use [Not all surveys]
+          paste0(
+            'SBS.LGC.', chr_abbr[s], '.PastYear.Any'
+          ),
+          # Which prompts were asked during survey
+          paste0(
+            'SBS.CHR.', chr_abbr[s], '.PromptsAsked'
+          ),
+          # Notes on quality
+          paste0(
+            'SBS.CHR.', chr_abbr[s], '.Notes'
+          ),
+          # Indicator for subset with no issues
+          paste0(
+            'SBS.LGC.', chr_abbr[s], '.NoIssues'
+          )
+        )
+
+        # Close 'Alcohol/Cannabis/Vapes'
+      }
+
+      # Close 'Additional variables for SBIRT sample'
+    }
+
     # Close 'Loop over substance abbreviations'
-  }
-
-  # Additional variables for SBIRT sample
-  if (lgc_SBIRT) {
-
-    chr_add <- c(
-      chr_add
-    )
-
-    # Close 'Additional variables for SBIRT sample'
   }
 
   chr_output <- swaap_select.merge( chr_input, chr_add )

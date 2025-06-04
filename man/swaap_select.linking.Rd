@@ -4,7 +4,11 @@
 \alias{swaap_select.linking}
 \title{Select Linking Items}
 \usage{
-swaap_select.linking(chr_input = NULL, lgc_original = FALSE)
+swaap_select.linking(
+  chr_input = NULL,
+  lgc_original = FALSE,
+  lgc_fastLink = FALSE
+)
 }
 \arguments{
 \item{chr_input}{An optional character
@@ -13,6 +17,11 @@ vector, additional columns to include.}
 \item{lgc_original}{A logical value; if
 \code{TRUE} uses original variable
 names instead of recoded ones.}
+
+\item{lgc_fastLink}{A logical value; if
+\code{TRUE} returns column names for
+variables specifically formatted to
+work with \link[fastLink:fastLink]{fastLink::fastLink}.}
 }
 \value{
 A character vector.

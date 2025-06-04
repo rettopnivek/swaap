@@ -13,6 +13,7 @@ swaap_link(
   lst_combos = NULL,
   lst_missing = NULL,
   fun_trim_duplicates = NULL,
+  lst_fastLink_args = NULL,
   chr_progress = "bar"
 )
 }

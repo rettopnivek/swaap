@@ -5,7 +5,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-12
+# Last updated 2025-05-15
 
 # Table of contents
 # I) swaap_add.ID
@@ -185,6 +185,18 @@ swaap_add.quality <- function(
       ),
       'Missing school code',
       chr_type = 'NA'
+    )
+
+  # Test record school code
+  dtf_data <- dtf_data |>
+    fun_flag_for_removal(
+      c(
+        'SSS.INT.SchoolCode',
+        'SSS.INT.School.Code'
+      ),
+      'Test record school code',
+      chr_type = 'value',
+      vec_value = 1
     )
 
   # No grade level
@@ -710,6 +722,26 @@ swaap_add.substances <- function(
     dtf_data[[ chr_new['PYA'] ]] <-
       dtf_data[[ chr_old['PY'] ]]
 
+    # If lifetime and past-year both exist
+    if ( lgc_exist['PY'] & lgc_exist['LF'] ) {
+
+      # Replace NA with FALSE for past-year used if
+      # lifetime is FALSE
+      dtf_data[[ chr_new['PYA'] ]][
+        is.na( dtf_data[[ chr_new['PYA'] ]] ) &
+          dtf_data[[ chr_new['LUA'] ]] %in% FALSE
+      ] <- FALSE
+
+      # Replace NA with TRUE for lifetime used if
+      # past-year is TRUE
+      dtf_data[[ chr_new['LUA'] ]][
+        is.na( dtf_data[[ chr_new['LUA'] ]] ) &
+          dtf_data[[ chr_new['PYA'] ]] %in% TRUE
+      ] <- TRUE
+
+      # Close 'If lifetime and past-year both exist'
+    }
+
     # Close 'If past-year use exists'
   }
 
@@ -738,7 +770,6 @@ swaap_add.substances <- function(
     lgc_use_under_0 <-
       !lgc_use_NA &
       dtf_data[[ chr_old['UD'] ]] < 0
-
 
     # Rating is missing
     dtf_data[[ chr_new['P31DU'] ]][
@@ -861,6 +892,59 @@ swaap_add.substances <- function(
     }
 
     # Close 'If past-year use exists'
+  }
+
+  # Binge drinking for alcohol
+  if ( 'Alcohol' %in% chr_substance ) {
+
+    # Variable exists
+    if ( "INV.FCT.SUB.Alcohol.Past30.Binge" %in% colnames(dtf_data) ) {
+
+      # 7-point rating for binge drinking [Character]
+      dtf_data$SBS.CHR.ALC.Past31.BingeRating <-
+        dtf_data$INV.FCT.SUB.Alcohol.Past30.Binge
+
+      # 7-point rating for binge drinking [Integer]
+      dtf_data$SBS.INT.ALC.Past31.BingeRating <-
+        dtf_data$SBS.CHR.ALC.Past31.BingeRating |>
+        factor(
+          levels = c(
+            '0 times',
+            '1 time',
+            '<1 day per wk',
+            '>=1 day per week',
+            '2-3 days per week',
+            '4-6 days per week',
+            '7 days per week'
+          )
+        ) |>
+        as.numeric()
+
+      # Branching logic
+      lgc_no_use <-
+        dtf_data$SBS.LGC.ALC.Lifetime.Any %in% FALSE &
+        is.na( dtf_data$SBS.INT.ALC.Past31.BingeRating )
+      dtf_data$SBS.INT.ALC.Past31.BingeRating[
+        lgc_no_use
+      ] <- 1
+
+      lgc_no_use <-
+        dtf_data$SBS.CHR.ALC.Notes %in% c(
+          'Flag: Set NA to 0 due to rating branching logic'
+        ) &
+        is.na( dtf_data$SBS.INT.ALC.Past31.BingeRating )
+      dtf_data$SBS.INT.ALC.Past31.BingeRating[
+        lgc_no_use
+      ] <- 1
+
+      dtf_data$SBS.CHR.ALC.Past31.BingeRating <- chr_ratings[
+        dtf_data$SBS.INT.ALC.Past31.BingeRating
+      ]
+
+      # Close 'Variable exists'
+    }
+
+    # Close 'Binge drinking for alcohol'
   }
 
   return( dtf_data )
@@ -994,7 +1078,7 @@ swaap_add.time_point <- function(
           dtf_sequence_cur$Semester == 'Spring'
         ] <- dtf_sequence_cur$TimePoint[
           dtf_sequence_cur$Semester == 'Spring'
-        ] + .5
+        ] - .5
 
         # Loop over sequence
         for ( k in 1:nrow(dtf_sequence_cur) ) {
@@ -1046,6 +1130,11 @@ swaap_add.time_point <- function(
 
     # Close 'Loop over years and semesters'
   }
+
+  dtf_data$SSS.INT.TimePoint <-
+    ( dtf_data$SSS.INT.TimePoint |>
+      factor( levels = sort( unique(dtf_data$SSS.INT.TimePoint) ) ) |>
+      as.numeric() ) - 1
 
   return( dtf_data )
 }

@@ -19,7 +19,16 @@ A data frame with the additional variables
 \code{'SBJ.CHR.Link.BirthYearMonth'},
 \code{'SBJ.CHR.Link.OlderSiblings'},
 \code{'SBJ.CHR.Link.EyeColor'}, and
-\code{'SBJ.CHR.Link.MiddleInitial'}.
+\code{'SBJ.CHR.Link.MiddleInitial'} for
+standard linking, and
+\code{SBJ.INT.Link.FL.Sex},
+\code{SBJ.CHR.Link.FL.MiddleInitial},
+\code{SBJ.CHR.Link.FL.StreetName},
+\code{SBJ.INT.Link.FL.EyeColor},
+\code{SBJ.INT.Link.FL.Siblings},
+\code{SBJ.CHR.Link.FL.SiblingBirthMonth}, and
+\code{SBJ.CHR.Link.FL.BirthYearMonth} for
+linking with \link[fastLink:fastLink]{fastLink::fastLink}.
 }
 \description{
 Renames linking items for easy selection.

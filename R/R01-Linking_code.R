@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email us directly if you
 # have any questions or comments
-# Last updated: 2025-05-12
+# Last updated: 2025-05-17
 
 # Table of contents
 # 1) Internal functions
@@ -262,6 +262,12 @@ swaap_link.internal.inputs <- function(
   # Check input for lst_combos
   if ( chr_type == 'lst_combos' ) {
 
+    lgc_fastLink <- FALSE
+
+    # Check for fastLink indicator
+    if ( !is.null(lst_items$fastLink) )
+      lgc_fastLink <- TRUE
+
     # Default input
     if ( is.null(obj_input) ) {
 
@@ -275,27 +281,61 @@ swaap_link.internal.inputs <- function(
       # Close 'Default input'
     }
 
-    chr_error <-
-      paste0(
-        "\nArgument 'lst_combos' must be a list of ",
-        "lists (one sublist for each set) consisting of ",
-        "integer vectors indicating combinations of ",
-        "linking items to match over, in the format:\n",
-        "list(\n",
-        "  <Set> = list(\n",
-        "    <Combo> = <item indices>,\n",
-        "    ...\n",
-        "  ),\n",
-        "  ...\n",
-        ")\n",
-        "\n",
-        "The order of combinations can be used to indicate ",
-        "which combos of linking items to prioritize when ",
-        "matching"
-      )
+    # Error message for fastLink inputs
+    if ( lgc_fastLink ) {
+
+      chr_error <-
+        paste0(
+          "\nArgument 'lst_combos' must be a list of ",
+          "lists (one sublist for each set) consisting of ",
+          "the elements 'stringdist', 'numeric', and/or 'partial',",
+          " each with integer vectors indicating the items ",
+          "to use with string distance matching, numeric matching, and ",
+          "partial string matching, in the format:\n",
+          "list(\n",
+          "  <Set> = list(\n",
+          "    stringdist = <item indices>,\n",
+          "    numeric = <item indices>,\n",
+          "    partial = <item indices>,\n",
+          "  ),\n",
+          "  ...\n",
+          ")\n",
+          "\n",
+          "The order of combinations can be used to indicate ",
+          "which combos of linking items to prioritize when ",
+          "matching"
+        )
+
+      # Close 'Error message for fastLink inputs'
+    } else {
+
+      chr_error <-
+        paste0(
+          "\nArgument 'lst_combos' must be a list of ",
+          "lists (one sublist for each set) consisting of ",
+          "integer vectors indicating combinations of ",
+          "linking items to match over, in the format:\n",
+          "list(\n",
+          "  <Set> = list(\n",
+          "    <Combo> = <item indices>,\n",
+          "    ...\n",
+          "  ),\n",
+          "  ...\n",
+          ")\n",
+          "\n",
+          "The order of combinations can be used to indicate ",
+          "which combos of linking items to prioritize when ",
+          "matching"
+        )
+
+      # Close else for 'Error message for fastLink inputs'
+    }
 
     # Make sure is list of lists
     if ( !is.list(obj_input) ) stop(chr_error)
+
+    if (lgc_fastLink)
+      lst_items$fastLink <- NULL
 
     # Make sure has same number as sets
     if ( length(obj_input) != length(lst_items) )
@@ -309,21 +349,46 @@ swaap_link.internal.inputs <- function(
       # Check is list of lists
       if ( !is.list( obj_input[[s]] ) ) stop(chr_error)
 
-      # Loop over sublists
-      for (l in seq_along( obj_input[[s]] ) ) {
+      # Standard linking
+      if ( !lgc_fastLink ) {
 
-        lgc_in_data[s] <- all(
-          obj_input[[s]][[l]] %in% seq_along( lst_items[[s]] )
+        # Loop over sublists
+        for (l in seq_along( obj_input[[s]] ) ) {
+
+          lgc_in_data[s] <- all(
+            obj_input[[s]][[l]] %in% seq_along( lst_items[[s]] )
+          )
+
+          # Close 'Loop over sublists'
+        }
+
+        # Close 'Standard linking'
+      } else {
+
+        lgc_in_data[s] <- any(
+          c( 'stringdist', 'numeric', 'partial' ) %in%
+            names(obj_input[[s]])
         )
 
-        # Close 'Loop over sublists'
+        # Close else for 'Standard linking'
       }
 
       # Close 'Loop over sets'
     }
 
-    if ( !all(lgc_in_data) )
-      stop( 'Item indices for combos must match items provided' )
+    # Flag issues
+    if ( !all(lgc_in_data) ) {
+
+      if (!lgc_fastLink)
+        stop( 'Item indices for combos must match items provided' )
+      if (lgc_fastLink)
+        stop( paste0(
+          "Must specify item indices for 'stringidst', ",
+          "'numeric', or 'partial' sublist elements"
+          ) )
+
+      # Close 'Flag issues'
+    }
 
     return( obj_input )
 
@@ -416,7 +481,187 @@ swaap_link.internal.inputs <- function(
   stop( '' )
 }
 
-#### 1.2) swaap_link.internal.via_dissimilarity ####
+#### 1.2) swaap_link.internal.assign_IDs ####
+# Assign Identifiers Based on Linkage
+#
+# @param 'dtf_long' A data frame, assumed to be standard processed
+#   school-wide assessment data with the columns
+#   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
+#   as well as the linking code items. The data frame is
+#   assumed to have been run through either the function
+#   'swaap_link.internal.via_dissimilarity' or
+#   'swaap_link.internal.via_group_by' beforehand.
+# @param 'lgc_progress' A logical value; if TRUE displays the
+#   progress of the function using section labels.
+# @param 'lgc_progress_bar' A logical value; if TRUE displays the
+#   progress of the function using a progress bar.
+#
+# @author Kevin Potter
+#
+# @returns A data frame.
+
+swaap_link.internal.assign_IDs <- function(
+    dtf_long,
+    lgc_progress,
+    lgc_progress_bar ) {
+
+  #### 1.2.1) Setup ####
+
+  if (lgc_progress) message( '    Setup for assigning IDs' )
+
+  lgc_linked <- dtf_long$LNK.CHR.Rows != ""
+  chr_old_ID <- dtf_long$IDN.CHR.Linked.ID
+
+  # No links
+  if ( !any(lgc_linked) ) {
+
+    warning(
+      "No links found"
+    )
+
+    return( dtf_long )
+
+    # Close 'No links'
+  }
+
+  #### 1.2.2) Identify links ####
+
+  if (lgc_progress) message( '    Identify links' )
+
+  # Extract unique linked pairs
+  chr_linked_rows <- dtf_long$LNK.CHR.Rows[lgc_linked]
+
+  chr_linked_rows <- lapply(
+    chr_linked_rows, function(s) {
+      chr_out <- strsplit( s, split = ';', fixed = TRUE )[[1]]
+      chr_out <- chr_out[ chr_out != '' ]
+      return(chr_out )
+    }
+  ) |> unlist() |> unique()
+  mat_linked_rows <- sapply(
+    chr_linked_rows, function(r) {
+      strsplit( r, split = ',', fixed = TRUE )[[1]] |> as.numeric()
+    }
+  )
+
+  int_all_rows <- unique( as.vector( mat_linked_rows[1:2, ] ) ) |> sort()
+
+  lst_all_links <- rep(
+    list(NULL), length(int_all_rows)
+  )
+
+  int_to_check <- int_all_rows
+  int_inc <- 1
+
+  # Loop over possible links
+  for (i in seq_along(int_all_rows)) {
+
+    lgc_col <-
+      mat_linked_rows[1, ] %in% int_all_rows[i] |
+      mat_linked_rows[2, ] %in% int_all_rows[i]
+    int_all_combos <-
+      mat_linked_rows[1:2, lgc_col] |>
+      as.vector() |> unique() |> sort()
+    lgc_col <-
+      mat_linked_rows[1, ] %in% int_all_combos |
+      mat_linked_rows[2, ] %in% int_all_combos
+
+    # First time
+    if ( i == 1 ) {
+
+      int_rows_to_consider <- as.vector(
+        mat_linked_rows[1:2, lgc_col]
+      ) |> unique() |> sort()
+
+      lst_all_links[[int_inc]] <- int_rows_to_consider
+
+      int_to_check <- int_to_check[
+        !int_to_check %in% lst_all_links[[int_inc]]
+      ]
+      int_inc <- int_inc + 1
+
+      # Close 'First time'
+    } else {
+
+      # Check if row has not already been included
+      if ( int_all_rows[i] %in% int_to_check) {
+
+        int_rows_to_consider <- as.vector(
+          mat_linked_rows[1:2, lgc_col]
+        ) |> unique() |> sort()
+
+        lst_all_links[[int_inc]] <- int_rows_to_consider
+
+        int_to_check <- int_to_check[
+          !int_to_check %in% lst_all_links[[int_inc]]
+        ]
+        int_inc <- int_inc + 1
+
+        # Close 'Check if row has not already been included'
+      }
+
+      # Close else for 'First time'
+    }
+
+    # Close 'Loop over possible links'
+  }
+
+  # Remove empty slots
+  lst_all_links <- lst_all_links[
+    !sapply( lst_all_links, is.null )
+  ]
+  int_L <- length( lst_all_links )
+
+  # Set up progress bar
+  if ( lgc_progress_bar & int_L > 1 ) {
+
+    message('')
+    obj_pb <- txtProgressBar(
+      min = 1, max = length( lst_all_links ), style = 3
+    )
+
+    # Close 'Set up progress bar'
+  }
+
+  # Loop over possible links
+  for ( l in seq_along(lst_all_links) ) {
+
+    int_freq <-
+      dtf_long$SSS.INT.TimePoint[ lst_all_links[[l]] ] |> table()
+
+    # Check for duplicates
+    if ( any(int_freq > 1 ) ) {
+
+      dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ] <-
+        gsub(
+          'UID', 'DID', dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ]
+        )[1]
+      dtf_long$LNK.LGC.Duplicates[ lst_all_links[[l]] ] <- TRUE
+
+      # Close 'Check for duplicates'
+    } else {
+
+      dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ] <-
+        gsub(
+          'UID', 'LID', dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ]
+        )[1]
+      dtf_long$LNK.LGC.NoIssues[ lst_all_links[[l]] ] <- TRUE
+
+      # Close else for 'Check for duplicates'
+    }
+
+    # Update the progress bar
+    if (lgc_progress_bar & int_L > 1)
+      setTxtProgressBar(obj_pb, l)
+
+    # Close 'Loop over possible links'
+  }
+  if (lgc_progress_bar & int_L > 1) close(obj_pb)
+
+  return( dtf_long )
+}
+
+#### 1.3) swaap_link.internal.via_dissimilarity ####
 # Link Records via Dissimiliarity Scores
 #
 # Internal function to conduct record linkage using
@@ -460,7 +705,7 @@ swaap_link.internal.via_dissimilarity <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.2.1) Setup ####
+  #### 1.3.1) Setup ####
 
   int_prog <- 0
 
@@ -488,7 +733,7 @@ swaap_link.internal.via_dissimilarity <- function(
     if (lgc_progress)
       message( paste0( '    Set: ', names(lst_sets)[s] ) )
 
-    #### 1.2.2) Identify rows for linking ####
+    #### 1.3.2) Identify rows for linking ####
 
     if ( lgc_progress )
       message( '    Identify rows for linking' )
@@ -531,7 +776,7 @@ swaap_link.internal.via_dissimilarity <- function(
       which(lgc_add), sum(lgc_base)
     )
 
-    #### 1.2.3) Match over all records and items ####
+    #### 1.3.3) Match over all records and items ####
 
     if ( lgc_progress )
       message( '      Compute matches over linking items' )
@@ -599,7 +844,7 @@ swaap_link.internal.via_dissimilarity <- function(
     # Force garbage collection
     gc()
 
-    #### 1.2.4) Compute dissimilarity scores ####
+    #### 1.3.4) Compute dissimilarity scores ####
 
     mat_diss_scores <- matrix(
       NA,
@@ -745,7 +990,7 @@ swaap_link.internal.via_dissimilarity <- function(
   return( dtf_long )
 }
 
-#### 1.3) swaap_link.internal.via_group_by ####
+#### 1.4) swaap_link.internal.via_group_by ####
 # Link Records via Grouping Factors
 #
 # Internal function to conduct record linkage using
@@ -777,343 +1022,313 @@ swaap_link.internal.via_group_by <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.3.1) fun_collapse_rows ####
-  fun_collapse_rows <- function(
-    int_rows ) {
+  #### 1.4.1) Setup ####
 
-    obj_out <- NA
-
-    # Collapse for 1 to 10 rows
-    if ( length( int_rows ) %in% 1:20 ) {
-
-      obj_out <- paste( int_rows, collapse = ',' )
-
-      # Close 'Collapse for 1 to 20 rows'
-    }
-
-    return( obj_out )
-  }
-
-  #### 1.3.2) Setup ####
-
-  if (lgc_progress) message( '    Identify rows' )
-
-  lgc_all <- rep( TRUE, nrow(dtf_long) )
   chr_items <- unique( unlist( lst_items ) )
 
   # Loop over sets
   for ( s in seq_along(lst_sets) ) {
 
+    if (lgc_progress)
+      message( paste0( '    Set: ', names(lst_sets)[s] ) )
+
+    if (lgc_progress) message( '    Identify rows' )
+
     lgc_base <-
       lst_sets[[s]]$Base
     lgc_add <-
       lst_sets[[s]]$Add
-    lgc_all[lgc_base | lgc_add] <- TRUE
+
+    lgc_duplicates <- FALSE
+    if ( all( lgc_base == lgc_add ) )
+      lgc_duplicates <- TRUE
+
+    lgc_all <- lgc_base | lgc_add
+
+    # Update indicator for attempting linkage
+    dtf_long$LNK.LGC.Attempted[lgc_all] <- TRUE
+    dtf_long$LNK.CHR.Method[lgc_all] <- 'group_by'
+
+    #### 1.4.2) Match records via items ####
+
+    if (lgc_progress) message( '    Group by items' )
+
+    int_TP <- unique(dtf_long$SSS.INT.TimePoint[lgc_all]) |> sort()
+    int_times <- rep_len( int_TP, 10 ) |> sort()
+    int_index <- lapply(
+      seq_along( int_TP ), function(i) {
+        return( 1:sum( int_times == int_TP[i] ) )
+      }
+    ) |> unlist()
+
+    dtf_patterns <- dtf_long[lgc_all, ] |>
+      dplyr::group_by_at(
+        chr_items
+      ) |>
+      dplyr::summarise(
+        Distinct = dplyr::n_distinct(
+          SSS.INT.TimePoint
+        ),
+        Records = length( SSS.INT.TimePoint ),
+        RW_0 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[1] ][int_index[1]],
+        RW_1 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[2] ][int_index[2]],
+        RW_2 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[3] ][int_index[3]],
+        RW_3 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[4] ][int_index[4]],
+        RW_4 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[5] ][int_index[5]],
+        RW_5 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[6] ][int_index[6]],
+        RW_6 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[7] ][int_index[7]],
+        RW_7 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[8] ][int_index[8]],
+        RW_8 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[9] ][int_index[9]],
+        RW_9 =
+          IDN.INT.Row[ SSS.INT.TimePoint %in% int_times[10] ][int_index[10]],
+        .groups = 'drop'
+      ) |>
+      data.frame()
+
+    # Check for missing linking items
+    dtf_patterns$Missing <- sapply(
+      1:nrow(dtf_patterns), function(r) {
+        sum(
+          is.na( dtf_patterns[r, chr_items ] )
+        )
+      }
+    )
+
+    #### 1.4.3) Identify linked rows ####
+
+    if (lgc_progress) message( '    Identify links' )
+
+    # Duplicates
+    if ( lgc_duplicates ) {
+
+      dtf_linked <- dtf_patterns |>
+        dplyr::filter(
+          Distinct == 1 &
+            Missing %in% 0 &
+            Records > 1
+        )
+
+      # Close 'Duplicates'
+    } else {
+
+      dtf_linked <- dtf_patterns |>
+        dplyr::filter(
+          Distinct > 1 &
+            Missing %in% 0 &
+            Distinct == Records
+        )
+
+      # Close else for 'Duplicates'
+    }
+
+    # Any successful links
+    if ( nrow(dtf_linked) > 0 ) {
+
+      # Progress bar
+      if ( lgc_progress_bar & nrow(dtf_linked) > 1 ) {
+
+        obj_pb <- txtProgressBar(
+          min = 1, max = nrow(dtf_linked), style = 3
+        )
+
+        # Close 'Progress bar'
+      }
+
+      # Loop over linked cases
+      for ( r in 1:nrow(dtf_linked) ) {
+
+        int_rows <- as.numeric(
+          dtf_linked[r, paste0( 'RW_', 0:9 )]
+        )
+        int_rows <- int_rows[ !is.na(int_rows) ]
+
+        # If at least two rows
+        if ( length(int_rows) > 1 ) {
+
+          dtf_long$LNK.CHR.Rows[int_rows] <- paste0(
+            dtf_long$LNK.CHR.Rows[int_rows],
+            paste(
+              paste0( int_rows[1], ',', int_rows[-1] ),
+              collapse = ';'
+            ) |> paste0(';')
+          )
+          dtf_long$LNK.LGC.Preliminary[int_rows] <- TRUE
+
+          # Close 'If at least two rows'
+        }
+
+        # Update the progress bar
+        if (lgc_progress_bar & nrow(dtf_linked) > 1)
+          setTxtProgressBar(obj_pb, r)
+
+        # Close 'Loop over linked cases'
+      }
+      if (lgc_progress_bar & nrow(dtf_linked) > 1) close(obj_pb)
+
+      # Close 'Any successful links'
+    }
 
     # Close 'Loop over sets'
   }
 
-  # Update indicator for attempting linkage
-  dtf_long$LNK.LGC.Attempted[lgc_all] <- TRUE
-  dtf_long$LNK.CHR.Method[lgc_all] <- 'group_by'
-
-  #### 1.3.3) Match records via items ####
-
-  if (lgc_progress) message( '    Group by items' )
-
-  dtf_patterns <- dtf_long[lgc_all, ] |>
-    dplyr::group_by_at(
-      chr_items
-    ) |>
-    dplyr::summarise(
-      Distinct = dplyr::n_distinct(
-        SSS.INT.TimePoint
-      ),
-      Records = length( SSS.INT.TimePoint ),
-      RW_0 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 0 ][1],
-      RW_1 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 1 ][1],
-      RW_2 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 2 ][1],
-      RW_3 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 3 ][1],
-      RW_4 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 4 ][1],
-      RW_5 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 5 ][1],
-      RW_6 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 6 ][1],
-      RW_7 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 7 ][1],
-      RW_8 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 8 ][1],
-      RW_9 =
-        IDN.INT.Row[ SSS.INT.TimePoint %in% 9 ][1],
-      ALL =
-        fun_collapse_rows(
-          IDN.INT.Row
-        ),
-      .groups = 'drop'
-    ) |>
-    data.frame()
-
-  # Check for missing linking items
-  dtf_patterns$Missing <- sapply(
-    1:nrow(dtf_patterns), function(r) {
-      sum(
-        is.na( dtf_patterns[r, chr_items ] )
-      )
-    }
-  )
-
-  #### 1.3.4) Identify linked rows ####
-
-  if (lgc_progress) message( '    Identify links' )
-
-  dtf_linked <- dtf_patterns |>
-    dplyr::filter(
-      Distinct > 1 &
-        Missing %in% 0 &
-        Distinct == Records
-    )
-
-  # Any successful links
-  if ( nrow(dtf_linked) > 0 ) {
-
-    # Progress bar
-    if ( lgc_progress_bar ) {
-
-      obj_pb <- txtProgressBar(
-        min = 1, max = nrow(dtf_linked), style = 3
-      )
-
-      # Close 'Progress bar'
-    }
-
-    # Loop over linked cases
-    for ( r in 1:nrow(dtf_linked) ) {
-
-      int_rows <- as.numeric(
-        dtf_linked[r, paste0( 'RW_', 0:9 )]
-      )
-      int_rows <- int_rows[ !is.na(int_rows) ]
-
-      # If at least two rows
-      if ( length(int_rows) > 1 ) {
-
-        dtf_long$LNK.CHR.Rows[int_rows] <-
-          paste(
-            paste0( int_rows[1], ',', int_rows[-1] ),
-            collapse = ';'
-          )
-
-        # Close 'If at least two rows'
-      }
-
-      # Update the progress bar
-      if (lgc_progress_bar)
-        setTxtProgressBar(obj_pb, r)
-
-      # Close 'Loop over linked cases'
-    }
-    if (lgc_progress_bar) close(obj_pb)
-
-    # Close 'Any successful links'
-  }
-
-  dtf_long$LNK.CHR.Rows[
-    dtf_long$LNK.CHR.Rows != ""
-  ] <- paste0(
-    dtf_long$LNK.CHR.Rows[
-      dtf_long$LNK.CHR.Rows != ""
-    ], ";"
-  )
-  dtf_long$LNK.LGC.Preliminary <-
-    dtf_long$LNK.CHR.Rows != ""
-
   return( dtf_long )
 }
 
-#### 1.4) swaap_link.internal.assign_IDs ####
-# Assign Identifiers Based on Linkage
-#
-# @param 'dtf_long' A data frame, assumed to be standard processed
-#   school-wide assessment data with the columns
-#   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
-#   as well as the linking code items. The data frame is
-#   assumed to have been run through either the function
-#   'swaap_link.internal.via_dissimilarity' or
-#   'swaap_link.internal.via_group_by' beforehand.
-# @param 'lgc_progress' A logical value; if TRUE displays the
-#   progress of the function using section labels.
-# @param 'lgc_progress_bar' A logical value; if TRUE displays the
-#   progress of the function using a progress bar.
-#
-# @author Kevin Potter
-#
-# @returns A data frame.
+#### 1.5) swaap_link.internal.via_fastLink ####
 
-swaap_link.internal.assign_IDs <- function(
+swaap_link.internal.via_fastLink <- function(
     dtf_long,
+    lst_sets,
+    lst_items,
+    lst_combos,
+    lst_fastLink_args,
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.4.1) Setup ####
+  #### 1.5.1) Setup ####
 
-  if (lgc_progress) message( '    Setup for assigning IDs' )
+  int_prog <- 0
 
-  lgc_linked <- dtf_long$LNK.CHR.Rows != ""
-  chr_old_ID <- dtf_long$IDN.CHR.Linked.ID
+  # Create progress bar parameters
+  if (lgc_progress_bar) {
 
-  # No links
-  if ( !any(lgc_linked) ) {
-
-    warning(
-      "No links found"
+    obj_pb <- txtProgressBar(
+      min = 1, max = length(lst_sets), style = 3
     )
 
-    return( dtf_long )
-
-    # Close 'No links'
+    # Close 'Create progress bar parameters'
   }
 
-  #### 1.4.2) Identify links ####
+  # Loop over sets
+  for ( s in seq_along(lst_sets) ) {
 
-  if (lgc_progress) message( '    Identify links' )
+    if (lgc_progress)
+      message( paste0( '    Set: ', names(lst_sets)[s] ) )
 
-  # Extract unique linked pairs
-  chr_linked_rows <- dtf_long$LNK.CHR.Rows[lgc_linked]
+    chr_prob <- paste0( 'LNK.DBL.PostProb.Set', s )
+    dtf_long[[ chr_prob ]] <- NA
 
-  chr_linked_rows <- lapply(
-    chr_linked_rows, function(s) {
-      chr_out <- strsplit( s, split = ';', fixed = TRUE )[[1]]
-      chr_out <- chr_out[ chr_out != '' ]
-      return(chr_out )
-    }
-  ) |> unlist() |> unique()
-  mat_linked_rows <- sapply(
-    chr_linked_rows, function(r) {
-      strsplit( r, split = ',', fixed = TRUE )[[1]] |> as.numeric()
-    }
-  )
+    #### 1.5.2) Identify rows for linking ####
 
-  int_all_rows <- unique( as.vector( mat_linked_rows[1:2, ] ) ) |> sort()
+    if ( lgc_progress )
+      message( '    Identify rows for linking' )
 
-  lst_all_links <- rep(
-    list(NULL), length(int_all_rows)
-  )
+    lgc_base <-
+      lst_sets[[s]]$Base
 
-  int_to_check <- int_all_rows
-  int_inc <- 1
+    lgc_add <-
+      lst_sets[[s]]$Add
 
-  # Loop over possible links
-  for (i in seq_along(int_all_rows)) {
+    # Check if assessing for duplicates
+    lgc_duplicates <- all( lgc_base == lgc_add )
 
-    lgc_col <-
-      mat_linked_rows[1, ] %in% int_all_rows[i] |
-      mat_linked_rows[2, ] %in% int_all_rows[i]
-    int_all_combos <-
-      mat_linked_rows[1:2, lgc_col] |>
-      as.vector() |> unique() |> sort()
-    lgc_col <-
-      mat_linked_rows[1, ] %in% int_all_combos |
-      mat_linked_rows[2, ] %in% int_all_combos
+    # Indicate that linkage was attempted
+    dtf_long$LNK.LGC.Attempted[
+      lgc_base | lgc_add
+    ] <- TRUE
+    # Update method
+    dtf_long$LNK.CHR.Method[
+      lgc_base | lgc_add
+    ] <- 'fastLink'
 
-    # First time
-    if ( i == 1 ) {
+    #### 1.5.3) Run fastLink ####
 
-      int_rows_to_consider <- as.vector(
-        mat_linked_rows[1:2, lgc_col]
-      ) |> unique() |> sort()
+    if (lgc_progress)
+      message( paste0( '    Run fastLink' ) )
 
-      lst_all_links[[int_inc]] <- int_rows_to_consider
+    chr_items <- lst_items[[s]]
+    print( chr_items )
 
-      int_to_check <- int_to_check[
-        !int_to_check %in% lst_all_links[[int_inc]]
-      ]
-      int_inc <- int_inc + 1
+    lst_args <- list(
+      dfA = dtf_long[lgc_base, ],
+      dfB = dtf_long[lgc_add, ],
+      varnames = chr_items
+    )
 
-      # Close 'First time'
-    } else {
+    # If combo input provided
+    if ( !is.null(lst_combos) ) {
 
-      # Check if row has not already been included
-      if ( int_all_rows[i] %in% int_to_check) {
 
-        int_rows_to_consider <- as.vector(
-          mat_linked_rows[1:2, lgc_col]
-        ) |> unique() |> sort()
+      # Items for string distance match
+      if ( !is.null( lst_combos[[s]]$stringdist ) ) {
 
-        lst_all_links[[int_inc]] <- int_rows_to_consider
-
-        int_to_check <- int_to_check[
-          !int_to_check %in% lst_all_links[[int_inc]]
+        lst_args$stringdist.match <- chr_items[
+          lst_combos[[s]]$stringdist
         ]
-        int_inc <- int_inc + 1
 
-        # Close 'Check if row has not already been included'
+        # Close 'Items for string distance match'
       }
 
-      # Close else for 'First time'
+      # Items for partial match
+      if ( !is.null( lst_combos[[s]]$partial ) ) {
+
+        lst_args$partial.match <- chr_items[
+          lst_combos[[s]]$partial
+        ]
+
+        # Close 'Items for partial match'
+      }
+
+      # Items for numeric match
+      if ( !is.null( lst_combos[[s]]$numeric ) ) {
+
+        lst_args$numeric.match <- chr_items[
+          lst_combos[[s]]$numeric
+        ]
+
+        # Close 'Items for numeric match'
+      }
+
+      # Close 'If combo input provided'
     }
 
-    # Close 'Loop over possible links'
-  }
-
-  # Remove empty slots
-  lst_all_links <- lst_all_links[
-    !sapply( lst_all_links, is.null )
-  ]
-
-  # Set up progress bar
-  if ( lgc_progress_bar ) {
-
-    message('')
-    obj_pb <- txtProgressBar(
-      min = 1, max = length( lst_all_links ), style = 3
+    lst_fastLink <- do.call(
+      fastLink::fastLink,
+      lst_args
     )
 
-    # Close 'Set up progress bar'
-  }
+    int_rows <- c( NA, NA )
 
-  # Loop over possible links
-  for ( l in seq_along(lst_all_links) ) {
+    # Loop over matches
+    for ( m in 1:nrow(lst_fastLink$matches) ) {
 
-    int_freq <-
-      dtf_long$SSS.INT.TimePoint[ lst_all_links[[l]] ] |> table()
+      int_rows[1] <-
+        dtf_long$IDN.INT.Row[lgc_base][
+          lst_fastLink$matches[m, 1]
+        ]
+      int_rows[2] <-
+        dtf_long$IDN.INT.Row[lgc_add][
+          lst_fastLink$matches[m, 2]
+        ]
 
-    # Check for duplicates
-    if ( any(int_freq > 1 ) ) {
+      dtf_long$LNK.CHR.Rows[int_rows] <- paste0(
+        dtf_long$LNK.CHR.Rows[int_rows],
+        int_rows[1], ',', int_rows[2], ';'
+      )
+      dtf_long[[ chr_prob ]][int_rows] <-
+        lst_fastLink$posterior[m]
 
-      dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ] <-
-        gsub(
-          'UID', 'DID', dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ]
-        )[1]
-      dtf_long$LNK.LGC.Duplicates[ lst_all_links[[l]] ] <- TRUE
-
-      # Close 'Check for duplicates'
-    } else {
-
-      dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ] <-
-        gsub(
-          'UID', 'LID', dtf_long$IDN.CHR.Linked.ID[ lst_all_links[[l]] ]
-        )[1]
-      dtf_long$LNK.LGC.NoIssues[ lst_all_links[[l]] ] <- TRUE
-
-      # Close else for 'Check for duplicates'
+      # Close 'Loop over matches'
     }
 
-    # Update the progress bar
-    if (lgc_progress_bar)
-      setTxtProgressBar(obj_pb, l)
+    # Update progress bar
+    if (lgc_progress_bar) setTxtProgressBar(obj_pb, s)
 
-    # Close 'Loop over possible links'
+    # Close 'Loop over sets'
   }
   if (lgc_progress_bar) close(obj_pb)
 
   return( dtf_long )
 }
-
 
 #### 2) swaap_link ####
 #' Link Records Across Time Points
@@ -1192,6 +1407,7 @@ swaap_link <- function(
     lst_combos = NULL,
     lst_missing = NULL,
     fun_trim_duplicates = NULL,
+    lst_fastLink_args = NULL,
     chr_progress = 'bar' ) {
 
   if ( chr_progress != '' ) message( 'Start: swaap_link' )
@@ -1236,7 +1452,7 @@ swaap_link <- function(
   )
 
   # Additional inputs for dissimilarity method
-  if ( chr_method != 'group_by' ) {
+  if ( chr_method %in% 'dissimilarity' ) {
 
     # Check combos
     lst_combos <- swaap:::swaap_link.internal.inputs(
@@ -1260,6 +1476,22 @@ swaap_link <- function(
     )
 
     # Close 'Additional inputs for dissimilarity method'
+  }
+
+  # Additional inputs for fastLink method
+  if ( chr_method %in% 'fastLink' ) {
+
+    # Check combos
+    lst_combos <- swaap:::swaap_link.internal.inputs(
+      dtf_long = dtf_long,
+      obj_input = lst_combos,
+      chr_type = 'lst_combos',
+      lst_sets = lst_sets,
+      lst_items = c( lst_items, fastLink = TRUE ),
+      lgc_progress = lgc_progress
+    )
+
+    # Close 'Additional inputs for fastLink method'
   }
 
   #### 2.1.1) fun_copy_prior ####
@@ -1326,7 +1558,11 @@ swaap_link <- function(
   dtf_long <- dtf_long |> fun_copy_prior(
     'LNK.CHR.Rows'
   )
-  # Copy old linked rows
+  # Copy old time point patterns
+  dtf_long <- dtf_long |> fun_copy_prior(
+    'LNK.CHR.TimePoints'
+  )
+  # Copy old attributes
   dtf_long <- dtf_long |> fun_copy_prior(
     'LNK.CHR.AttributeWithParameters'
   )
@@ -1350,7 +1586,7 @@ swaap_link <- function(
   dtf_long$LNK.LGC.Duplicates <- FALSE
   dtf_long$LNK.LGC.NoIssues <- FALSE
   dtf_long$LNK.CHR.AttributeWithParameters <-
-    'attributes(...)$swaap.inputs_for_linking'
+    'attributes( <data>$LNK.CHR.AttributeWithParameters )'
 
   # Link using dissimilarity scores
   if ( chr_method == 'dissimilarity' ) {
@@ -1374,11 +1610,28 @@ swaap_link <- function(
     dtf_long <- dtf_long |>
       swaap:::swaap_link.internal.via_group_by(
         lst_sets = lst_sets,
-        lst_items = lst_items
+        lst_items = lst_items,
+        lgc_progress = lgc_progress,
+        lgc_progress_bar = lgc_progress_bar
       )
-    dtf_linked <<- dtf_long
 
     # Close 'Link using group_by method'
+  }
+
+  # Link using fastLink
+  if ( chr_method == 'fastLink' ) {
+
+    dtf_long <- dtf_long |>
+      swaap:::swaap_link.internal.via_fastLink(
+        lst_sets = lst_sets,
+        lst_items = lst_items,
+        lst_combos = lst_combos,
+        lst_fastLink_args = lst_fastLink_args,
+        lgc_progress = lgc_progress,
+        lgc_progress_bar = lgc_progress_bar
+      )
+
+    # Close 'Link using fastLink'
   }
 
   #### 2.3) Assign IDs ####
@@ -1430,54 +1683,70 @@ swaap_link <- function(
     # Incorporate previous duplicate info
     if ( lgc_update ) {
 
-      dtf_long$QLT.LGC.RemoveDuplicate[
-        lgc_remove %in% TRUE
-      ] <- TRUE
-      dtf_remove <- lgc_remove |> swaap::swaap_data.attr()
-      dtf_remove_new <-
-        dtf_long$QLT.LGC.RemoveDuplicate |>
-        swaap::swaap_data.attr()
+      # Any duplicates
+      if ( any(dtf_long$QLT.LGC.RemoveDuplicate) ) {
 
-      # If possible combine as is
-      if ( !any( dtf_remove_new$Pattern %in% dtf_remove$Pattern ) ) {
+        dtf_long$QLT.LGC.RemoveDuplicate[
+          lgc_remove %in% TRUE
+        ] <- TRUE
+        dtf_remove <- lgc_remove |> swaap::swaap_data.attr()
+        dtf_remove_new <-
+          dtf_long$QLT.LGC.RemoveDuplicate |>
+          swaap::swaap_data.attr()
 
-        dtf_remove <- rbind(
-          dtf_remove,
-          dtf_remove_new
-        )
+        # If possible combine as is
+        if ( !any( dtf_remove_new$Pattern %in% dtf_remove$Pattern ) ) {
 
-        # Close 'If possible combine as is'
-      } else {
+          dtf_remove <- rbind(
+            dtf_remove,
+            dtf_remove_new
+          )
 
-        # Loop over rows
-        for ( r in 1:nrow(dtf_remove_new) ) {
+          # Close 'If possible combine as is'
+        } else {
 
-          # Sum
-          if ( dtf_remove_new$Pattern[r] %in% dtf_remove$Pattern ) {
+          # Loop over rows
+          for ( r in 1:nrow(dtf_remove_new) ) {
 
-            dtf_remove[
-              dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
-              -1
-            ] <- dtf_remove[
-              dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
-              -1
-            ] + dtf_remove_new[r, -1]
+            # Sum
+            if ( dtf_remove_new$Pattern[r] %in% dtf_remove$Pattern ) {
 
-            # Close 'Sum'
-          } else {
+              dtf_remove[
+                dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
+                -1
+              ] <- dtf_remove[
+                dtf_remove$Pattern %in% dtf_remove_new$Pattern[r],
+                -1
+              ] + dtf_remove_new[r, -1]
 
-            dtf_remove <- rbind(
-              dtf_remove,
-              dtf_remove_new[r, ]
-            )
+              # Close 'Sum'
+            } else {
 
-            # Close else for 'Sum'
+              dtf_remove <- rbind(
+                dtf_remove,
+                dtf_remove_new[r, ]
+              )
+
+              # Close else for 'Sum'
+            }
+
+            # Close 'Loop over rows'
           }
 
-          # Close 'Loop over rows'
+          # Close else for 'If possible combine as is'
         }
 
-        # Close else for 'If possible combine as is'
+        # Close 'Any duplicates'
+      } else {
+
+        # Add prior data frame
+        attributes(
+          dtf_long$QLT.LGC.RemoveDuplicate
+        ) <- attributes(
+          lgc_remove
+        )
+
+        # Close else for 'Any duplicates'
       }
 
       # Close 'Incorporate previous duplicate info'
@@ -1499,16 +1768,19 @@ swaap_link <- function(
       chr_method = chr_method,
       lst_sets = lst_sets,
       lst_items = lst_items,
-      lst_combos = ifelse(
-        chr_method == 'dissimilarity',
-        lst_combos,
-        NULL
+      lst_combos = switch(
+        chr_method,
+        dissimilarity = lst_combos,
+        group_by = NULL,
+        fastLink = lst_combos
       ),
-      lst_missing = ifelse(
-        chr_method == 'dissimilarity',
-        lst_missing,
-        NULL
+      lst_missing = switch(
+        chr_method,
+        dissimilarity = lst_combos,
+        group_by = NULL,
+        fastLink = lst_combos
       ),
+      lst_fastLink_args = lst_fastLink_args,
       lst_time = list(
         start = dtt_start,
         end = dtt_end,
@@ -2308,6 +2580,158 @@ swaap_link.helper.input <- function(
 
     # If list
     if ( is.list(obj_extra) ) {
+
+      # Additional slot indicating fastLink
+      if ( !is.null(obj_extra$fastLink ) ) {
+
+        # Remove slot
+        obj_extra$fastLink <- NULL
+
+        # Loop over remaining slots
+        for ( s in seq_along(obj_extra) ) {
+
+          chr_items <- obj_extra[[s]]
+
+          # Initial setup
+          if ( s == 1 ) {
+
+            lst_combos <- list(
+              stringdist = seq_along( chr_items )
+            )
+
+            # Expand by sets
+            if ( !is.null(lst_sets) ) {
+
+              lst_combos <- lapply(
+                seq_along(lst_sets), function(l) {
+                  list(
+                    stringdist = seq_along( chr_items )
+                  )
+                }
+              )
+              names(lst_combos) <- names(lst_sets)
+
+              # Close 'Expand by sets'
+            } else {
+
+              # If multiple sets
+              if ( length( obj_extra ) > 1 ) {
+
+                lst_combos <- lapply(
+                  seq_along(obj_extra), function(l) {
+                    list(
+                      stringdist = seq_along( chr_items )
+                    )
+                  }
+                )
+                names(lst_combos) <- names(obj_extra)
+
+                # Close 'If multiple sets'
+              }
+
+              # Close else for 'Expand by sets'
+            }
+
+            # Close 'Initial setup'
+          }
+
+          chr_items.fastLink <-
+            swaap::swaap_select.linking( lgc_fastLink = TRUE )
+
+          # Using items prepped for fastLink
+          if ( all( chr_items %in% chr_items.fastLink ) ) {
+
+            lst_combos[[s]] <- list(
+              stringdist = which(
+                grepl( '.CHR.', chr_items, fixed = TRUE )
+              ),
+              numeric = which(
+                !grepl( '.CHR.', chr_items, fixed = TRUE )
+              )
+            )
+
+            chr_partial <- c(
+              'SBJ.CHR.Link.FL.StreetName'
+            )
+
+            # Partial matching
+            if ( any(chr_partial %in% chr_items) ) {
+
+              lst_combos[[s]]$partial <- which(
+                chr_items %in% chr_partial
+              )
+
+              # Close 'Partial matching'
+            }
+
+            # Close 'Using items prepped for fastLink'
+          }
+
+          chr_items.contact <- c(
+            'SBJ.INT.Link.SchoolCode',
+            swaap::swaap_select.contact()
+          )
+
+          # Using contact info items
+          if ( all( chr_items %in% chr_items.contact) ) {
+
+            lst_combos[[s]] <- list()
+
+            chr_stringdist <- c(
+              'SBJ.CHR.Contact.Name',
+              'SBJ.CHR.Contact.Email',
+              'SBJ.CHR.Contact.DateOfBirth'
+            )
+
+            # Items matched on string distance
+            if ( any( chr_stringdist %in% chr_items ) ) {
+
+              lst_combos[[s]]$stringdist <- which(
+                chr_items %in% chr_stringdist
+              )
+
+              # Close 'Items matched on string distance'
+            }
+
+            chr_numeric <- c(
+              'SBJ.INT.Link.SchoolCode',
+              'SBJ.CHR.Contact.Cellphone'
+            )
+
+            # Items matched on numeric distance
+            if ( any( chr_numeric %in% chr_items ) ) {
+
+              lst_combos[[s]]$numeric <- which(
+                chr_items %in% chr_numeric
+              )
+
+              # Close 'Items matched on numeric distance'
+            }
+
+            chr_partial <- c(
+              'SBJ.CHR.Contact.Name'
+            )
+
+            # Items acceptable for partial matching
+            if ( any( chr_partial %in% chr_items ) ) {
+
+              lst_combos[[s]]$partial <- which(
+                chr_items %in% chr_partial
+              )
+
+              # Close 'Items acceptable for partial matching'
+            }
+
+            # Close 'Using contact info items'
+          }
+
+          # Close 'Loop over remaining slots'
+        }
+
+        return(lst_combos)
+
+        # Close 'Additional slot indicating fastLink'
+      }
 
       lst_combos <- lapply(
         seq_along(obj_extra), function(s) {
@@ -3680,7 +4104,7 @@ swaap_link.report.discrepant <- function(
     )
 
     chr_labels <- sapply(
-      chr_items, function(s) {
+      dtf_item$Item, function(s) {
         tail( strsplit( s, split = '.', fixed = TRUE )[[1]], n = 1 )
       }
     )

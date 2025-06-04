@@ -2,7 +2,7 @@
 % Please edit documentation in R/R04-Select_variables.R
 \name{swaap_select.substances}
 \alias{swaap_select.substances}
-\title{Select Variables Denoting SBIRT Sample}
+\title{Select Variables Measuring Substance Use}
 \usage{
 swaap_select.substances(chr_input = NULL, lgc_SBIRT = FALSE)
 }
@@ -14,8 +14,8 @@ vector, additional columns to include.}
 A character vector.
 }
 \description{
-Function to select variables tracking
-SBIRT sample details.
+Function to select variables with self-reported
+substance use details.
 }
 \author{
 Kevin Potter

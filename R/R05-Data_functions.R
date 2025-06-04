@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-13
+# Last updated 2025-05-16
 
 # Table of contents
 # 1) swaap_data.merge
@@ -334,12 +334,40 @@ swaap_data.merge <- function(
 
       if ( lgc_progress ) message( paste0( '      ', chr_select[j] ) )
 
-      chr_columns <- do.call(
-        chr_select[j],
-        list( chr_input = chr_columns )
-      )
+      lst_args <- list( chr_input = chr_columns )
 
-      # Close 'Loop over recode functions'
+      if ( 'swaap_select.substances' %in% chr_select[j] )
+        lst_args$lgc_SBIRT <- lgc_SBIRT
+
+      # Special case for linking items
+      if ( 'swaap_select.linking' %in% chr_select[j] ) {
+
+        # Standard linking items
+        chr_columns <- do.call(
+          chr_select[j],
+          lst_args
+        )
+
+        # Linking items for fastLink
+        lst_args$chr_input <- chr_columns
+        lst_args$lgc_fastLink <- TRUE
+        chr_columns <- do.call(
+          chr_select[j],
+          lst_args
+        )
+
+        # Close 'Special case for linking items'
+      } else {
+
+        chr_columns <- do.call(
+          chr_select[j],
+          lst_args
+        )
+
+        # Close else for 'Special case for linking items'
+      }
+
+      # Close 'Loop over select functions'
     }
 
     dtf_current <- dtf_current |>
@@ -1369,6 +1397,8 @@ swaap_data.replace_defaults <- function(
       )
     )
 
+    return( lst_replace )
+
     # Close 'Race'
   }
 
@@ -1427,7 +1457,7 @@ swaap_data.replace_defaults <- function(
   }
 
   stop(
-    "Check argument 'chr_type'"
+    "Check argument 'chr_column'"
   )
 }
 
@@ -1501,8 +1531,8 @@ swaap_data.static <- function(
   # If indicated track if variable is static
   if ( !is.null(lst_replace[[5]] ) ) {
 
-    lst_replace[[2]] <- paste0(
-      lst_replace[[2]], 'STATIC=', lst_replace[[5]]
+    lst_replace[[3]] <- paste0(
+      lst_replace[[3]], 'STATIC=', lst_replace[[5]]
     )
 
     # Close 'If indicated track if variable is static'
@@ -1556,14 +1586,23 @@ swaap_data.static <- function(
       lst_comparison = lst_replace[[1]],
       chr_action = lst_replace[[2]],
       vec_replacement = lst_replace[[3]],
-      obj_default = lst_replace[[4]],
-      lgc_static = lst_replace[[5]]
+      obj_default = lst_replace[[4]]
     ) |>
     data.frame()
 
   colnames(dtf_collapsed)[2] <- chr_new[1]
   dtf_collapsed[[ chr_new[2] ]] <- grepl(
     'STATIC=TRUE',
+    dtf_collapsed[[ chr_new[1] ]],
+    fixed = TRUE
+  )
+  dtf_collapsed[[ chr_new[1] ]] <- gsub(
+    'STATIC=TRUE', '',
+    dtf_collapsed[[ chr_new[1] ]],
+    fixed = TRUE
+  )
+  dtf_collapsed[[ chr_new[1] ]] <- gsub(
+    'STATIC=FALSE', '',
     dtf_collapsed[[ chr_new[1] ]],
     fixed = TRUE
   )
@@ -1580,4 +1619,115 @@ swaap_data.static <- function(
   return( dtf_data )
 }
 
+#### 10) swaap_data.at ####
+#' Take Slice of Values at Specified Time
+#'
+#' Function that will extract values for a
+#' variable at a specified time point (and
+#' if a new variable is given, update the
+#' data frame with those values propagated
+#' by ID).
+#'
+#' @param dtf_data A data frame, assumed to
+#'   have linked records across time points
+#'   and a column \code{'SSS.INT.TimePoint'}.
+#' @param int_time An integer value, the time
+#'   point of interest (must be a value in
+#'   \code{'SSS.INT.TimePoint'}),
+#' @param chr_column A character string, the
+#'   column name with the values to subset.
+#' @param chr_ID A character string, the column
+#'   name for the linked record identifier.
+#' @param chr_new A character string, the new
+#'   column name to add to \code{dtf_data}
+#'   with the propagated values. If blank
+#'   instead returns a new data frame.
+#' @param obj_default A value, the default to
+#'   return when the time point is missing.
+#'
+#' @returns A data frame, either the extracted
+#'   values at the specified time for each
+#'   ID or the updated original data frame.
+#'
+#' @export
 
+swaap_data.at <- function(
+    dtf_data,
+    int_time,
+    chr_column,
+    chr_ID = 'IDN.CHR.Linked.ID',
+    chr_new = '',
+    obj_default = NA ) {
+
+  dtf_data$Intermediate <- dtf_data[[ chr_column ]]
+
+  fun_slice <- function(
+    vec_values,
+    obj_default ) {
+
+    # No values
+    if ( length(vec_values) == 0 ) {
+
+      return( obj_default )
+
+      # Close 'No values'
+    } else {
+
+      return( vec_values[1] )
+
+      # Close else for 'No values'
+    }
+
+  }
+
+  fun_time <- function(
+    vec_times,
+    int_time ) {
+
+    if ( int_time %in% vec_times )
+      return( int_time )
+
+    return( sort( unique(vec_times) )[1] )
+
+  }
+
+  dtf_slice <- dtf_data |>
+    dplyr::group_by_at(
+      chr_ID
+    ) |>
+    dplyr::summarize(
+      Time = fun_time( SSS.INT.TimePoint, int_time ),
+      Value = fun_slice(
+        Intermediate[SSS.INT.TimePoint %in% int_time],
+        obj_default
+      ),
+      .groups = 'drop'
+    ) |>
+    data.frame()
+
+  # Add to existing data
+  if ( chr_new != '' ) {
+
+    colnames( dtf_slice ) <- c(
+      chr_ID,
+      'Time',
+      chr_new
+    )
+    dtf_slice <- dtf_slice |>
+      dplyr::filter(
+        Time %in% int_time
+      )
+    dtf_slice$Time <- NULL
+
+    dtf_data <- dtf_data |>
+      dplyr::left_join(
+        dtf_slice
+      )
+
+    return( dtf_data )
+
+    # Close 'Add to existing data'
+  }
+
+  return( dtf_slice )
+}

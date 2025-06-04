@@ -1624,8 +1624,71 @@ swaap_simulate.link.duplicates <- function(
 
 #### L.R) swaap_simulate.link.realistic ####
 
-swaap_simulate.link.realistic <- function() {
+swaap_simulate.link.realistic <- function(
+    int_RNG_seed = 20250516,
+    dtf_base = NULL ) {
 
+  set.seed( int_RNG_seed )
+
+  lst_setup <- swaap_simulate.link.setup()
+
+  # Default option for school
+  if ( is.null(dtf_school) ) {
+
+    dtf_school <- data.frame(
+      SSS.INT.School.Code = 1:42,
+      SSS.INT.SchoolEnrollment = 251
+    )
+
+    # Close 'Default option for school'
+  }
+
+  # Default design
+  if ( is.null(dtf_base) )
+
+  # Initialize first time point
+  dtf_long <- lst_setup$design[
+    rep( 1, int_N ),
+  ]
+
+  dtf_long$IDX.INT.Origin.LASID <- 1:int_N
+  dtf_long$SSS.INT.School.Code <- sample(
+    dtf_school[[1]],
+    size = int_N,
+    replace = TRUE,
+    prob = dtf_school[[2]]
+  )
+
+  dtf_long$SSS.INT.TimePoint <- 0
+  dtf_long
+
+  dtf_long$LNK.LGC.True.Linkable <- NA
+
+  # Update variables based on time point
+  dtf_long$SSS.INT.SurveyYear <- chr_year_semester[1]
+
+  dtf_long$SSS.INT.Grade <- c(
+    9, 9, 10
+  )[dtf_long$SSS.INT.TimePoint + 1]
+  dtf_long$SSS.DTM.SurveyStart <- c(
+    lst_setup$dates['Y23F'],
+    lst_setup$dates['Y24S'],
+    lst_setup$dates['Y24F']
+  )[dtf_long$SSS.INT.TimePoint + 1]
+  dtf_long$SSS.INT.LongitudinalWave <- 1
+
+  dtf_long$IDX.CHR.Origin.ID <-
+    paste0(
+      'Fake', 1:nrow(dtf_long)
+    )
+
+  chr_linking_questions <- lst_setup$linking_questions$variables
+
+  # Kindergarten year calculated from year and grade
+  dtf_long$SBJ.INT.Link.KindergartenYearEst <-
+    c( 2023, 2023, 2024 )[ # Use start of school year
+      dtf_long$SSS.INT.TimePoint + 1
+    ] - dtf_long$SSS.INT.Grade
 
 
 

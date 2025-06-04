@@ -336,3 +336,28 @@ swaap_analysis.source_scripts <- function(
 
 }
 
+#### 3) swaap_analysis.schools ####
+
+swaap_analysis.schools <- function(
+    dtf_data ) {
+
+  dtf_SCH <- dtf_data |>
+    dplyr::group_by(
+      School = SSS.INT.SchoolCode,
+      Wave = SSS.INT.LongitudinalWave,
+      Time = SSS.INT.TimePoint,
+      Grade = SSS.INT.Grade,
+      Year = SSS.INT.SurveyYear,
+      Semester = SSS.CHR.Semester
+    ) |>
+    dplyr::summarise(
+      Enrolled = unique(
+        SSS.INT.SchoolEnrollment
+      ),
+      Records = length( IDN.CHR.Record.ID ),
+      .groups = 'drop'
+    ) |>
+    data.frame()
+
+  return( dtf_SCH )
+}
