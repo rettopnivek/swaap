@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-16
+# Last updated 2025-07-02
 
 # Table of contents
 # B) swaap_recode.base
@@ -12,8 +12,10 @@
 # E) swaap_recode.experience
 # I) swaap_recode.inventories
 #   I.1) AUDIT
-#   1.2) ADDI
+#   I.2) ADDI
+#   I.3) ERS
 # L) swaap_recode.linking
+# M) swaap_recode.misc
 # Q) swaap_recode.quality
 
 #### B) swaap_recode.base ####
@@ -50,9 +52,16 @@ swaap_recode.base <- function(
     dtf_data$SSS.INT.SchoolCode <-
       dtf_data$SSS.INT.School.Code
 
-  if ( 'IDX.CHR.Origin.ID' %in% chr_columns )
-    dtf_data$IDN.CHR.Record.ID <-
-      dtf_data$IDX.CHR.Origin.ID
+  lgc_found <- all(
+    c( 'IDX.INT.Origin.Record', 'IDX.INT.Origin.Database' ) %in% chr_columns
+  )
+
+  if ( lgc_found )
+    dtf_data$IDN.CHR.Record.ID <- paste0(
+      dtf_data$IDX.INT.Origin.Database,
+      '-',
+      dtf_data$IDX.INT.Origin.Record
+    )
 
   # Copy multiple versions
   if ( 'IDX.INT.Origin.LASID' %in% chr_columns ) {
@@ -344,11 +353,13 @@ swaap_recode.experience <- function(
 #'
 #' @returns A data frame with the additional variables
 #' \code{'INV.INT.AUDIT.Total'},
-#' \code{'INV.INT.AUDIT.Q1'} to
-#' \code{'INV.INT.AUDIT.Q10'},
+#' \code{'INV.INT.AUDIT.Q1.<Label>'} to
+#' \code{'INV.INT.AUDIT.Q10.<Label>'},
 #' \code{'INV.INT.ADDI.Total'},
-#' \code{'INV.INT.ADDI.Q1'} to
-#' \code{'INV.INT.ADDI.Q15'}.
+#' \code{'INV.INT.ADDI.Q1.<Label>'} to
+#' \code{'INV.INT.ADDI.Q15.<Label>'},
+#' \code{'INV.INT.ERS.Q01.<Subscale>.<Label>'} to
+#' \code{'INV.INT.ERS.Q21.<Subscale>.<Label>'}.
 #'
 #' @export
 
@@ -392,10 +403,14 @@ swaap_recode.inventories <- function(
     # Close 'Loop over items'
   }
 
-  #### 1.2) ADDI ####
+  #### I.2) ADDI ####
 
-  chr_items <- paste0(
+  chr_disc <- paste0(
     'INV.LGL.ADDI.Q',
+    1:15
+  )
+  chr_upset <- paste0(
+    'INV.INT.ADDI.Scale',
     1:15
   )
   chr_labels <- c(
@@ -417,27 +432,42 @@ swaap_recode.inventories <- function(
   )
 
   # Loop over items
-  for ( i in seq_along(chr_items) ) {
+  for ( i in seq_along(chr_disc) ) {
 
-    if ( chr_items[i] %in% chr_columns )
+    if ( chr_disc[i] %in% chr_columns )
       dtf_data[[
-        paste0( 'INV.INT.ADDI.Q', i, '.', chr_labels[i] )
+        paste0( 'INV.INT.ADDI.Q', i, '.D.', chr_labels[i] )
       ]] <-
-        as.numeric( dtf_data[[ chr_items[i] ]] )
+        as.numeric( dtf_data[[ chr_disc[i] ]] )
+
+    if ( chr_upset[i] %in% chr_columns )
+      dtf_data[[
+        paste0( 'INV.INT.ADDI.Q', i, '.U.', chr_labels[i] )
+      ]] <-
+        as.numeric( dtf_data[[ chr_upset[i] ]] )
 
     # Close 'Loop over items'
   }
 
   chr_items_new <-
-    paste0( 'INV.INT.ADDI.Q', 1:15, '.', chr_labels )
+    paste0( 'INV.INT.ADDI.Q', 1:15, '.D.', chr_labels )
 
   if ( all(chr_items_new %in% colnames(dtf_data)) )
-    dtf_data$INV.INT.ADDI.Total <- rowSums(
+    dtf_data$INV.INT.ADDI.D.Total <- rowSums(
       dtf_data[, chr_items_new],
       na.rm = TRUE
     )
 
-  #### 1.3) ERS ####
+  chr_items_new <-
+    paste0( 'INV.INT.ADDI.Q', 1:15, '.U.', chr_labels )
+
+  if ( all(chr_items_new %in% colnames(dtf_data)) )
+    dtf_data$INV.INT.ADDI.U.Total <- rowSums(
+      dtf_data[, chr_items_new],
+      na.rm = TRUE
+    )
+
+  #### I.3) ERS ####
 
   chr_items <- c(
     "INV.INT.ERS.Q01.Persistence1",
@@ -749,6 +779,68 @@ swaap_recode.linking <- function(
   return( dtf_data )
 }
 
+#### M) swaap_recode.misc ####
+#' Recode Miscellaneous Items
+#'
+#' Renames miscellaneous items.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A data frame with the additional variables
+#' \code{'SBJ.CHR.PrescribedMedicationHealth'}, and
+#' \code{'SBJ.LGC.SoughtHelp.<Type>'}.
+#'
+#' @export
+
+swaap_recode.misc <- function(
+    dtf_data ) {
+
+  chr_columns <- colnames(dtf_data)
+
+  if ( 'INV.INT.Health.Medication' %in% chr_columns )
+    dtf_data$SBJ.CHR.PrescribedMedicationHealth <- c(
+      'No',
+      'Yes',
+      'Not sure'
+    )[ dtf_data$INV.INT.Health.Medication + 1 ]
+
+  chr_terms <- c(
+    'None', # 0
+    'ParentCaregiver', # 1
+    'OtherFamily', # 2
+    'FriendPartner', # 3
+    'TeacherCoachAdmin', # 4
+    'SchoolCounselor', # 5
+    'OutsideCounselor', # 6
+    'Pediatrician', # 7
+    'ReligiousLeader', # 8
+    'Helpline', # 9
+    'SocialMediaSupport', # 10
+    'EmergencyServices', # 11
+    'RehabCenter', # 12
+    'NotListed' # 13
+  )
+
+  # Loop over terms
+  for ( i in seq_along(chr_terms) ) {
+
+    chr_old <- paste0( 'INV.LGL.HelpSeeking', (0:13)[i] )
+    chr_new <- paste0( 'SBJ.LGC.SoughtHelp.', chr_terms[i] )
+
+    if ( chr_old %in% chr_columns )
+      dtf_data[[ chr_new ]] <-
+        dtf_data[[ chr_old ]]
+
+    # Close 'Loop over terms'
+  }
+
+  return( dtf_data )
+}
+
 #### Q) swaap_recode.quality ####
 #' Recode Quality Control Items
 #'
@@ -762,7 +854,7 @@ swaap_recode.linking <- function(
 #'
 #' @returns A data frame with the additional variables
 #' \code{'QLT.DBL.ProportionCompleted.Total'},
-#' \code{'QLT.LGC.AttentionChecks.MetAll'}. and
+#' \code{'QLT.LGC.AttentionChecks.MetAll'}, and
 #' \code{'QLT.LGC.AttentionChecks.MetAtLeastOne'}.
 #'
 #' @export

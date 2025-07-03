@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-16
+# Last updated 2025-07-03
 
 # Table of contents
 # 1) swaap_select
@@ -29,6 +29,9 @@
 #' @param dtf_data A data frame, assumed to
 #'   follow the standardized format for the
 #'   school-wide assessment data.
+#' @param chr_columns A character vector, the
+#'   columns in \code{dtf_data} to select
+#'   (columns that do not exist are ignored).
 #'
 #' @author Kevin Potter
 #'
@@ -38,8 +41,7 @@
 
 swaap_select <- function(
     dtf_data,
-    chr_columns,
-    lgc_progress = TRUE ) {
+    chr_columns ) {
 
   chr_columns <-
     chr_columns[ chr_columns %in% colnames(dtf_data) ]
@@ -135,7 +137,8 @@ swaap_select.base <- function(
       ),
       'SSS.DTM.SurveyStart',
       'SSS.DTM.SurveyEnd',
-      'IDX.CHR.Origin.ID',
+      'IDX.INT.Origin.Record',
+      'IDX.INT.Origin.Database',
       'IDX.INT.Origin.LASID',
       'SSS.INT.Grade'
     )
@@ -254,7 +257,7 @@ swaap_select.experience <- function(
 #' @param chr_measures A character vector, the
 #'   different measures to select, including
 #'   \code{'AUDIT'}, \code{'PHQ4'}, \code{'ERS'},
-#'   and \code{'ADDI'}.
+#'   \code{'APSS'}, and \code{'ADDI'}.
 #' @param lgc_items A logical value; if \code{TRUE}
 #'   includes the individual items for each measure,
 #'   otherwise includes total scores and subscale
@@ -269,7 +272,7 @@ swaap_select.experience <- function(
 swaap_select.inventories <- function(
     chr_input = NULL,
     chr_measures = c(
-      'AUDIT', 'PHQ4', 'ERS', 'ADDI'
+      'AUDIT', 'PHQ4', 'ERS', 'ADDI', 'APSS'
     ),
     lgc_items = FALSE ) {
 
@@ -306,6 +309,30 @@ swaap_select.inventories <- function(
     'Threatened'
   )
 
+  chr_labels.ERS <- c(
+    'P.UpsetLongTime', # 1
+    'S.HurtEasily', # 2
+    'I.FeelIntensely', # 3
+    'I.PhysicallyUpset', # 4
+    'S.EmotionalEasily', # 5
+    'I.EmotionsStrongly', # 6
+    'S.OftenAnxious', # 7
+    'P.FeelOther', # 8
+    'S.LittlestThings', # 9
+    'P.DisagreementLong', # 10
+    'P.LongerToCalmDown', # 11
+    'S.AngryEasily', # 12
+    'S.Bothered', # 13
+    'S.EasilyAgitated', # 14
+    'S.EmotionsInstant', # 15
+    'S.ShortFuse', # 16
+    'I.EmotionsTooIntense', # 17
+    'S.SensitivePerson', # 18
+    'I.MoodsPowerful', # 19
+    'I.HardToThink', # 20
+    'I.Overreacting' # 21
+  )
+
   # Individual items
   if ( lgc_items ) {
 
@@ -318,6 +345,12 @@ swaap_select.inventories <- function(
         'INV.INT.PHQ4.Q4.Anhedonia'
       )
 
+    if ( 'ERS' %in% chr_measures )
+      chr_add <- c(
+        chr_add,
+        paste0( 'INV.INT.ERS.Q', 1:21, '.', chr_labels.ERS )
+      )
+
     if ( 'AUDIT' %in% chr_measures )
       chr_add <- c(
         chr_add,
@@ -327,7 +360,20 @@ swaap_select.inventories <- function(
     if ( 'ADDI' %in% chr_measures )
       chr_add <- c(
         chr_add,
-        paste0( 'INV.INT.ADDI.Q', 1:15, '.', chr_labels.ADDI )
+        paste0( 'INV.INT.ADDI.Q', 1:15, '.D.', chr_labels.ADDI ),
+        paste0( 'INV.INT.ADDI.Q', 1:15, '.U.', chr_labels.ADDI )
+      )
+
+    if ( 'APSS' %in% chr_measures )
+      chr_add <- c(
+        chr_add,
+        "INV.DBL.APSS.Q1.MindReading",
+        "INV.DBL.APSS.Q2.TVRadio",
+        "INV.DBL.APSS.Q3.Spying",
+        "INV.DBL.APSS.Q4.Auditory",
+        "INV.DBL.APSS.Q5.Controlled",
+        "INV.DBL.APSS.Q6.Visual",
+        "INV.DBL.APSS.Q7.Grandiosity"
       )
 
     # Close 'Individual items'
@@ -356,7 +402,14 @@ swaap_select.inventories <- function(
   if ( 'ADDI' %in% chr_measures )
     chr_add <- c(
       chr_add,
-      'INV.INT.ADDI.Total'
+      'INV.INT.ADDI.D.Total',
+      'INV.INT.ADDI.U.Total'
+    )
+
+  if ( 'APSS' %in% chr_measures )
+    chr_add <- c(
+      chr_add,
+      'INV.DBL.APSS.Total'
     )
 
   if ( length(chr_add) == 0 )
@@ -504,6 +557,53 @@ swaap_select.linking <- function(
   return( chr_output )
 }
 
+#### 3.M) swaap_select.misc ####
+#' Select Variables for Miscellaneous Items
+#'
+#' Function to select variables for
+#' miscellaneous items.
+#'
+#' @param chr_input An optional character
+#'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A character vector.
+#'
+#' @export
+swaap_select.misc <- function(
+    chr_input = NULL ) {
+
+  chr_terms <- c(
+    'None', # 0
+    'ParentCaregiver', # 1
+    'OtherFamily', # 2
+    'FriendPartner', # 3
+    'TeacherCoachAdmin', # 4
+    'SchoolCounselor', # 5
+    'OutsideCounselor', # 6
+    'Pediatrician', # 7
+    'ReligiousLeader', # 8
+    'Helpline', # 9
+    'SocialMediaSupport', # 10
+    'EmergencyServices', # 11
+    'RehabCenter', # 12
+    'NotListed' # 13
+  )
+
+  chr_add <- c(
+    'SBJ.CHR.PrescribedMedicationHealth',
+    paste0(
+      'SBJ.LGC.SoughtHelp.',
+      chr_terms
+    )
+  )
+
+  chr_output <- swaap_select.merge( chr_input, chr_add )
+
+  return( chr_output )
+}
+
 #### 3.Q) swaap_select.quality ####
 #' Select Variables for Quality Control
 #'
@@ -513,7 +613,7 @@ swaap_select.linking <- function(
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
 #'
-#' @author Kevin POtter
+#' @author Kevin Potter
 #'
 #' @returns A character vector.
 #'
@@ -524,6 +624,8 @@ swaap_select.quality <- function(
 
   chr_add <- c(
     'QLT.DBL.ProportionCompleted.Total',
+    'QLT.LGC.AttentionChecks.MetAll',
+    'QLT.LGC.AttentionChecks.MetAtLeastOne',
     'QLT.LGC.Remove',
     'QLT.CHR.Remove'
   )
@@ -663,5 +765,142 @@ swaap_select.substances <- function(
 
   return( chr_output )
 }
+
+#### 3.S) swaap_select.suicidality ####
+#' Select Variables on Suicidality
+#'
+#' Function to select variables on suicidality.
+#'
+#' @param chr_input An optional character
+#'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A character vector.
+#'
+#' @export
+
+swaap_select.suicidality <- function(
+    chr_input = NULL ) {
+
+  chr_add <- c(
+    'INV.INT.SI.Thoughts',
+    'INV.INT.SI.How',
+    'INV.INT.SI.Attempt',
+    'INV.INT.SI.Selfharm',
+    'INV.INT.SI.Total'
+  )
+
+  chr_output <- swaap_select.merge( chr_input, chr_add )
+
+  return( chr_output )
+}
+
+#### 4) %s% ####
+#' Operator for Selecting Columns
+#'
+#' Operator for calling [swaap::swaap_select]
+#' and specified column subsets.
+#'
+#' @param dtf_data A data frame.
+#' @param chr_select A character vector, the
+#'   specific variants of \code{swaap_select}
+#'   to call. Options currently include:
+#'   \code{'base'}, \code{'contact'},
+#'   \code{'demographics'}, \code{'experience'},
+#'   \code{'inventories'}, \code{'linked'},
+#'   \code{'linking'}, \code{'quality'},
+#'   \code{'SBIRT'}, and \code{'substances'}.
+#'
+#' @returns A data frame with the subset of
+#' specified columns.
+#'
+#' @export
+
+`%s%` <- function(
+    dtf_data,
+    chr_select ) {
+
+  chr_columns <- ''
+
+  chr_lgc <- chr_select[
+    grepl( 'lgc', chr_select, fixed = TRUE )
+  ]
+  chr_select <- chr_select[
+    !grepl( 'lgc', chr_select, fixed = TRUE )
+  ]
+
+  # Loop over calls
+  for ( i in seq_along(chr_select) ) {
+
+    lst_args <- list(
+      chr_input = chr_columns
+    )
+
+    # Extra arguments for swaap_select.substances
+    if ( chr_select[i] == 'substances' ) {
+
+      if ( 'lgc_SBIRT' %in% chr_lgc )
+        lst_args$lgc_SBIRT <- TRUE
+
+      # Close 'Extra arguments for swaap_select.substances'
+    }
+
+    # Extra arguments for swaap_select.linking
+    if ( chr_select[i] == 'linking' ) {
+
+      if ( 'lgc_original' %in% chr_lgc )
+        lst_args$lgc_original <- TRUE
+
+      if ( 'lgc_fastLink' %in% chr_lgc )
+        lst_args$lgc_fastLink <- TRUE
+
+      # Close 'Extra arguments for swaap_select.linking'
+    }
+
+    # Extra arguments for swaap_select.linked
+    if ( chr_select[i] == 'linked' ) {
+
+      if ( 'lgc_subset' %in% chr_lgc )
+        lst_args$lgc_subset <- TRUE
+
+      # Close 'Extra arguments for swaap_select.linked'
+    }
+
+    # Extra arguments for swaap_select.base
+    if ( chr_select[i] == 'base' ) {
+
+      if ( 'lgc_original' %in% chr_lgc )
+        lst_args$lgc_original <- TRUE
+
+      # Close 'Extra arguments for swaap_select.base'
+    }
+
+    # Extra arguments for swaap_select.inventories
+    if ( chr_select[i] == 'inventories' ) {
+
+      if ( 'lgc_items' %in% chr_lgc )
+        lst_args$lgc_items <- TRUE
+
+      # Close 'Extra arguments for swaap_select.inventories'
+    }
+
+    chr_columns <- do.call(
+      eval(
+        parse(
+          text = paste0( 'swaap::swaap_select.', chr_select[i] )
+        )
+      ),
+      args = lst_args
+    )
+
+    # Close 'Loop over calls'
+  }
+
+  return(
+    swaap::swaap_select(dtf_data, chr_columns)
+  )
+}
+
 
 

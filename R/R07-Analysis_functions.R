@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-12
+# Last updated 2025-06-11
 
 # Table of contents
 # 1) swaap_analysis.prep_project
@@ -25,7 +25,7 @@
 #'
 #' @returns As a side effect creates the 'Source'
 #' and 'R' folders, and creates a '_targets.R' and
-#' 'R01-Data_processing.R' scripts.
+#' 'R/R01-Data_processing.R' scripts.
 #'
 #' @export
 
@@ -87,12 +87,12 @@ swaap_analysis.prep_project <- function(
     "# ... ",
     "# ",
     "# @param 'obj_x' An R object (see target output ",
-    "#   from the 'SURF_A002.RXX.example' function).",
+    paste0( "#   from the '", chr_project, ".RXX.example' function)." ),
     "# ",
     "# @details ",
     "# Prerequisites:",
     "#   * The R package '?' (version ?)",
-    paste0( "#   * The '", chr_project,
+    paste0( "#   * The '", chr_project, '.RXX',
             ".example' function" ),
     "# ",
     "# @returns ...",
@@ -113,7 +113,7 @@ swaap_analysis.prep_project <- function(
     'library(targets)',
     '',
     '# Source in all R scripts with functions',
-    "swaap_analysis.source_scripts()",
+    "swaap::swaap_analysis.source_scripts()",
     '',
     "# Load in packages",
     "tar_option_set(",
@@ -165,6 +165,16 @@ swaap_analysis.prep_project <- function(
     "    )",
     "  ),",
     "  ",
+    "  # - Survey data [2024 Fall]",
+    "  #   targets::tar_load( dtf_SRV.Y24F )",
+    "  tar_target(",
+    "    dtf_SRV.Y24F,",
+    "    read.csv(",
+    "      chr_path.source_files['2024Fall'],",
+    "      stringsAsFactors = FALSE",
+    "    )",
+    "  ),",
+    "  ",
     "  # - Information on source data",
     "  #   targets::tar_load( dtf_SRV.Source )",
     "  tar_target(",
@@ -197,11 +207,11 @@ swaap_analysis.prep_project <- function(
             format( Sys.time(), '%Y-%m-%d' ) ),
     '',
     '# Table of contents',
-    '# 1) SWA_COMC.R01.process_data',
+    paste0( '# 1) ', chr_project, '.R01.process_data' ),
     '',
-    '#### 1) SWA_COMC.R01.process_data ####',
+    paste0( '#### 1) ', chr_project, '.R01.process_data ####' ),
     '',
-    'SWA_COMC.R01.process_data <- function(',
+    paste0( chr_project, 'R01.process_data <- function(' ),
     '  lst_data,',
     '  dtf_SRV.Source ) {',
     '  ',
@@ -218,7 +228,7 @@ swaap_analysis.prep_project <- function(
     '    targets::tar_load( dtf_SRV.Source )',
     '    ',
     '    # Test function',
-    '    dtf_SRV.Full <- SWA_COMC.R01.process_data(',
+    paste0( '    dtf_SRV.Full <- ', chr_project, '.R01.process_data(' ),
     '      lst_data = list(',
     '        Y23F = dtf_SRV.Y23F,',
     '        Y24F = dtf_SRV.Y24F',

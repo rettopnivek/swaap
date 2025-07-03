@@ -6,7 +6,7 @@
 \usage{
 swaap_select.inventories(
   chr_input = NULL,
-  chr_measures = c("AUDIT", "PHQ4", "ERS", "ADDI"),
+  chr_measures = c("AUDIT", "PHQ4", "ERS", "ADDI", "APSS"),
   lgc_items = FALSE
 )
 }
@@ -17,7 +17,7 @@ vector, additional columns to include.}
 \item{chr_measures}{A character vector, the
 different measures to select, including
 \code{'AUDIT'}, \code{'PHQ4'}, \code{'ERS'},
-and \code{'ADDI'}.}
+\code{'APSS'}, and \code{'ADDI'}.}
 
 \item{lgc_items}{A logical value; if \code{TRUE}
 includes the individual items for each measure,

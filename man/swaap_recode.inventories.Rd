@@ -14,11 +14,13 @@ school-wide assessment data.}
 \value{
 A data frame with the additional variables
 \code{'INV.INT.AUDIT.Total'},
-\code{'INV.INT.AUDIT.Q1'} to
-\code{'INV.INT.AUDIT.Q10'},
+\code{'INV.INT.AUDIT.Q1.<Label>'} to
+\code{'INV.INT.AUDIT.Q10.<Label>'},
 \code{'INV.INT.ADDI.Total'},
-\code{'INV.INT.ADDI.Q1'} to
-\code{'INV.INT.ADDI.Q15'}.
+\code{'INV.INT.ADDI.Q1.<Label>'} to
+\code{'INV.INT.ADDI.Q15.<Label>'},
+\code{'INV.INT.ERS.Q01.<Subscale>.<Label>'} to
+\code{'INV.INT.ERS.Q21.<Subscale>.<Label>'}.
 }
 \description{
 Renames inventory variables for easy selection.

@@ -10,6 +10,7 @@ swaap_data.merge(
   chr_recode = "",
   chr_select = "",
   lgc_SBIRT = FALSE,
+  lgc_items = TRUE,
   lgc_remove_flagged = TRUE,
   chr_source_files = "",
   int_grades = NULL,
@@ -46,6 +47,9 @@ use \code{'base'}).}
 
 \item{lgc_SBIRT}{A logical value; if \code{TRUE}
 restricts the output only to the SBIRT sample.}
+
+\item{lgc_items}{A logical value; if \code{TRUE}
+includes individual items for inventory measures.}
 
 \item{lgc_remove_flagged}{A logical value; if \code{TRUE}
 remove records that fail initial quality checks

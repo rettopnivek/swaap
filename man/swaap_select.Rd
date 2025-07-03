@@ -4,12 +4,16 @@
 \alias{swaap_select}
 \title{Select Columns}
 \usage{
-swaap_select(dtf_data, chr_columns, lgc_progress = TRUE)
+swaap_select(dtf_data, chr_columns)
 }
 \arguments{
 \item{dtf_data}{A data frame, assumed to
 follow the standardized format for the
 school-wide assessment data.}
+
+\item{chr_columns}{A character vector, the
+columns in \code{dtf_data} to select
+(columns that do not exist are ignored).}
 }
 \value{
 A data frame.

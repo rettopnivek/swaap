@@ -103,6 +103,8 @@
 #   be defined for each set defined by 'lst_sets'. For a
 #   given sublist, indices apply to the character vector defined
 #   for the relevant set in 'lst_items'.
+# @param 'obj_extra' Either NULL or 'fastLink' for selecting linking
+#   items.
 # @param 'lgc_progress' A logical value; if TRUE displays the
 #   progress of the function.
 #
@@ -117,6 +119,7 @@ swaap_link.internal.inputs <- function(
     lst_sets = NULL,
     lst_items = NULL,
     lst_combos = NULL,
+    obj_extra = NULL,
     lgc_progress = FALSE ) {
 
   #### 1.1.1) lst_sets ####
@@ -199,6 +202,7 @@ swaap_link.internal.inputs <- function(
         swaap::swaap_link.helper.input(
           chr_input = 'items',
           lst_sets = lst_sets,
+          obj_extra = obj_extra,
           lgc_progress = lgc_progress
         )
 
@@ -1246,7 +1250,7 @@ swaap_link.internal.via_fastLink <- function(
       message( paste0( '    Run fastLink' ) )
 
     chr_items <- lst_items[[s]]
-    print( chr_items )
+    # print( chr_items )
 
     lst_args <- list(
       dfA = dtf_long[lgc_base, ],
@@ -1291,10 +1295,10 @@ swaap_link.internal.via_fastLink <- function(
       # Close 'If combo input provided'
     }
 
-    lst_fastLink <- do.call(
+    lst_fastLink <- suppressMessages( do.call(
       fastLink::fastLink,
       lst_args
-    )
+    ) )
 
     int_rows <- c( NA, NA )
 
@@ -1448,6 +1452,10 @@ swaap_link <- function(
     obj_input = obj_items,
     chr_type = 'lst_items',
     lst_sets = lst_sets,
+    obj_extra = list(
+      NULL,
+      'fastLink'
+    )[[ (chr_method %in% 'fastLink') + 1 ]],
     lgc_progress = lgc_progress
   )
 
@@ -1490,6 +1498,28 @@ swaap_link <- function(
       lst_items = c( lst_items, fastLink = TRUE ),
       lgc_progress = lgc_progress
     )
+
+    # Ensure numeric inputs
+    chr_items <- lst_items |> unlist() |> unique()
+    chr_numeric <- chr_items[
+      substr(chr_items, 5, 7 ) %in% c( 'INT', 'DBL' )
+    ]
+
+    # Any numeric items
+    if ( length(chr_numeric) > 0 ) {
+
+      # Loop over numeric items
+      for ( v in seq_along(chr_numeric) ) {
+
+        dtf_long[[ chr_numeric[v] ]] <- as.numeric(
+          dtf_long[[ chr_numeric[v] ]]
+        )
+
+        # Close 'Loop over numeric items'
+      }
+
+      # Close 'Any numeric items'
+    }
 
     # Close 'Additional inputs for fastLink method'
   }
@@ -1650,6 +1680,81 @@ swaap_link <- function(
     )
   # Remove intermediary variable
   dtf_long$LNK.LGC.Preliminary <- NULL
+
+  # Additional processing for fastLink method
+  if ( chr_method %in% 'fastLink' ) {
+
+    fun_equal <- function(
+     vec_x ) {
+
+      lgc_out <- FALSE
+
+      # Any non-missing
+      if ( any( !is.na(vec_x) ) ) {
+
+        vec_x <- vec_x[!is.na(vec_x)]
+        lgc_out <- vec_x[1] %in% vec_x
+
+        # Close 'Any non-missing'
+      }
+
+      return( lgc_out )
+    }
+
+    chr_items <- lst_items |> unlist() |> unique()
+
+    chr_items <- chr_items[
+      chr_items %in% c(
+        'SBJ.INT.Link.SchoolCode',
+        'SSS.INT.SchoolCode',
+        'SBJ.CHR.Link.Sex',
+        'SBJ.INT.Link.FL.Sex',
+        'SBJ.CHR.Link.BirthYearMonth',
+        'SBJ.CHR.Link.FL.BirthYearMonth'
+      )
+    ]
+
+    # If relevant items found
+    if ( length(chr_items) > 0 ) {
+
+      dtf_IDs <- dtf_long |>
+        dplyr::group_by(
+          ID = IDN.CHR.Linked.ID
+        ) |>
+        dplyr::summarise_at(
+          chr_items, fun_equal
+        ) |>
+        data.frame()
+
+      # More than one variable
+      if ( ncol(dtf_IDs) > 2 ) {
+
+        lgc_FP <- rowSums( dtf_IDs[, -1] ) < ( ncol(dtf_IDs) - 1 )
+
+        # Close 'More than one variable'
+      } else {
+
+        lgc_FP <- !dtf_IDs[[2]]
+
+        # Close else for 'More than one variable'
+      }
+
+
+      dtf_long$LNK.LGC.fastLinkFastPositive <-
+        dtf_long$IDN.CHR.Linked.ID %in% dtf_IDs$ID[
+          lgc_FP
+        ]
+
+      # Close 'If relevant items found'
+    } else {
+
+      dtf_long$LNK.LGC.fastLinkFastPositive <- rep( FALSE, nrow(dtf_long) )
+
+      # Close else for 'If relevant items found'
+    }
+
+    # Close 'Additional processing for fastLink method'
+  }
 
   #### 2.4) Final trimming of duplicates ####
 
@@ -2266,35 +2371,57 @@ swaap_link.helper.input <- function(
       swaap::swaap_select.linking()
     chr_linking_orig <-
       swaap::swaap_select.linking( lgc_original = TRUE )
+    chr_linking_fast <-
+      swaap::swaap_select.linking( lgc_fastLink = TRUE )
 
-    lgc_clean <- any(
-      chr_linking_clean[
-        !chr_linking_clean %in% chr_linking_orig
-      ] %in% chr_columns
-    )
+    # Extra input
+    if ( !is.null( obj_extra ) ) {
 
-    # If any linking items exist [Clean]
-    if ( lgc_clean ) {
+      # Check for fastLink
+      if ( obj_extra %in% 'fastLink' ) {
 
-      chr_linking <- chr_linking_clean[
-        chr_linking_clean %in% chr_columns
-      ]
+        chr_linking <- chr_linking_fast
 
-      # Close 'If any linking items exist [Clean]'
+        # Close 'Check for fastLink'
+      }
+
+      # Close 'Extra input'
     }
 
-    lgc_orig <- any(
-      chr_linking_orig %in% chr_columns
-    )
+    # No items defined
+    if ( is.null( chr_linking ) ) {
 
-    # If any linking items exist [Original]
-    if ( !lgc_clean & lgc_orig ) {
+      lgc_clean <- any(
+        chr_linking_clean[
+          !chr_linking_clean %in% chr_linking_orig
+        ] %in% chr_columns
+      )
 
-      chr_linking <- chr_linking_orig[
+      # If any linking items exist [Clean]
+      if ( lgc_clean ) {
+
+        chr_linking <- chr_linking_clean[
+          chr_linking_clean %in% chr_columns
+        ]
+
+        # Close 'If any linking items exist [Clean]'
+      }
+
+      lgc_orig <- any(
         chr_linking_orig %in% chr_columns
-      ]
+      )
 
-      # Close 'If any linking items exist [Original]'
+      # If any linking items exist [Original]
+      if ( !lgc_clean & lgc_orig ) {
+
+        chr_linking <- chr_linking_orig[
+          chr_linking_orig %in% chr_columns
+        ]
+
+        # Close 'If any linking items exist [Original]'
+      }
+
+      # Close 'No items defined'
     }
 
     # No items found
@@ -2360,7 +2487,6 @@ swaap_link.helper.input <- function(
 
     # Close 'Create input'
   }
-
 
   #### 3.1.4) Combos ####
 
@@ -2635,8 +2761,10 @@ swaap_link.helper.input <- function(
             # Close 'Initial setup'
           }
 
-          chr_items.fastLink <-
+          chr_items.fastLink <- c(
+            'SSS.INT.DistrictCode',
             swaap::swaap_select.linking( lgc_fastLink = TRUE )
+          )
 
           # Using items prepped for fastLink
           if ( all( chr_items %in% chr_items.fastLink ) ) {
@@ -2650,19 +2778,19 @@ swaap_link.helper.input <- function(
               )
             )
 
-            chr_partial <- c(
-              'SBJ.CHR.Link.FL.StreetName'
-            )
-
-            # Partial matching
-            if ( any(chr_partial %in% chr_items) ) {
-
-              lst_combos[[s]]$partial <- which(
-                chr_items %in% chr_partial
-              )
-
-              # Close 'Partial matching'
-            }
+            # chr_partial <- c(
+            #   'SBJ.CHR.Link.FL.StreetName'
+            # )
+            #
+            # # Partial matching
+            # if ( any(chr_partial %in% chr_items) ) {
+            #
+            #   lst_combos[[s]]$partial <- which(
+            #     chr_items %in% chr_partial
+            #   )
+            #
+            #   # Close 'Partial matching'
+            # }
 
             # Close 'Using items prepped for fastLink'
           }

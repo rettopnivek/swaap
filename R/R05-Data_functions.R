@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-16
+# Last updated 2025-07-03
 
 # Table of contents
 # 1) swaap_data.merge
@@ -16,6 +16,8 @@
 # 7) swaap_data.replace
 # 8) swaap_data.replace_defaults
 # 9) swaap_data.static
+# 10) swaap_data.at
+# 11) swaap_data.deidentified
 
 #### 1) swaap_data.merge ####
 #' Merge Multiple Data Sets
@@ -49,6 +51,8 @@
 #'   use \code{'base'}).
 #' @param lgc_SBIRT A logical value; if \code{TRUE}
 #'   restricts the output only to the SBIRT sample.
+#' @param lgc_items A logical value; if \code{TRUE}
+#'   includes individual items for inventory measures.
 #' @param lgc_remove_flagged A logical value; if \code{TRUE}
 #'   remove records that fail initial quality checks
 #'   (see [swaap::swaap_add.quality_checks]).
@@ -69,6 +73,7 @@ swaap_data.merge <- function(
     chr_recode = '',
     chr_select = '',
     lgc_SBIRT = FALSE,
+    lgc_items = TRUE,
     lgc_remove_flagged = TRUE,
     chr_source_files = '',
     int_grades = NULL,
@@ -99,6 +104,7 @@ swaap_data.merge <- function(
     message( "  'experience'," )
     message( "  'inventories'," )
     message( "  'linking'," )
+    message( "  'misc'," )
     message( "  'quality'" )
     message( ")" )
     message("")
@@ -111,9 +117,11 @@ swaap_data.merge <- function(
     message( "  'experience'," )
     message( "  'inventories'" )
     message( "  'linking'," )
+    message( "  'misc'," )
     message( "  'quality'," )
     message( "  'SBIRT'," )
     message( "  'substances'" )
+    message( "  'suicidality'" )
     message( ")" )
     message("")
 
@@ -158,6 +166,7 @@ swaap_data.merge <- function(
       'swaap_recode.experience',
       'swaap_recode.inventories',
       'swaap_recode.linking',
+      'swaap_recode.misc',
       'swaap_recode.quality'
     )
 
@@ -180,8 +189,10 @@ swaap_data.merge <- function(
       'swaap_select.contact',
       'swaap_select.demographics',
       'swaap_select.linking',
+      'swaap_select.misc',
       'swaap_select.SBIRT',
       'swaap_select.substances',
+      'swaap_select.suicidality',
       'swaap_select.experience',
       'swaap_select.inventories',
       'swaap_select.quality'
@@ -205,7 +216,7 @@ swaap_data.merge <- function(
       seq_along(lst_data), function(d) {
         unique( lst_data[[d]]$SSS.INT.Grade )
       }
-    ) |> unique() |> sort()
+    ) |> unlist() |> unique() |> sort()
 
     # Close 'Use all provided grades'
   }
@@ -338,6 +349,9 @@ swaap_data.merge <- function(
 
       if ( 'swaap_select.substances' %in% chr_select[j] )
         lst_args$lgc_SBIRT <- lgc_SBIRT
+
+      if ( 'swaap_select.inventories' %in% chr_select[j] )
+        lst_args$lgc_items <- lgc_items
 
       # Special case for linking items
       if ( 'swaap_select.linking' %in% chr_select[j] ) {
@@ -742,7 +756,7 @@ swaap_data.attr <- function(
 }
 
 #### 5) swaap_data.subset ####
-#' Subset Data Frame While Perserving Attributes
+#' Subset Data Frame While Preserving Attributes
 #'
 #' Function to subset a data frame while preserving
 #' any column attributes.
@@ -1731,3 +1745,45 @@ swaap_data.at <- function(
 
   return( dtf_slice )
 }
+
+#### 11) swaap_data.deidentified ####
+#' Deidentify a Standardized Data Set
+#'
+#' Function to deidentify data following
+#' the standardized format for school-wide
+#' assessment data.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#'
+#' @returns A data frame with columns containing
+#' potential identifying data removed.
+#'
+#' @export
+
+swaap_data.deidentified <- function(
+    dtf_data ) {
+
+  chr_columns <- colnames(dtf_data)
+
+  chr_remove <- c(
+    swaap::swaap_select.contact(),
+    swaap::swaap_select.linking(),
+    swaap::swaap_select.linking(lgc_original = TRUE),
+    swaap::swaap_select.linking(lgc_fastLink = TRUE),
+    chr_columns[
+      grepl( '.Link.', chr_columns, fixed = TRUE )
+    ],
+    chr_columns[
+      grepl( '.DTT.', chr_columns, fixed = TRUE )
+    ]
+  )
+
+  chr_columns <- chr_columns[
+    !chr_columns %in% chr_remove
+  ]
+
+  return( dtf_data[, chr_columns] )
+}
+

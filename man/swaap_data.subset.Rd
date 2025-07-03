@@ -2,7 +2,7 @@
 % Please edit documentation in R/R05-Data_functions.R
 \name{swaap_data.subset}
 \alias{swaap_data.subset}
-\title{Subset Data Frame While Perserving Attributes}
+\title{Subset Data Frame While Preserving Attributes}
 \usage{
 swaap_data.subset(dtf_data, vec_subset)
 }

@@ -7,11 +7,17 @@
 #   kpotter5@mgh.harvard.edu
 # Please email us directly if you
 # have any questions or comments
-# Last updated: 2025-05-19
+# Last updated: 2025-07-03
 
 # Package development
 # - To update man pages
 #   devtools::document()
+
+# Improve helper functions for defining inputs for fastLink
+# Add option to set fastLink linkage across diff. schools to FALSE
+# Add a function to trim PHI
+# Add automatic detection of 8->9 and tweak inputs appropriate
+# Add step for fastLink where ensure numeric variables
 
 #' School-Wide Assessment Analysis Preparation
 #'
@@ -20,7 +26,7 @@
 #'
 #' @description
 #'
-#' The \pkg{swwap} package provides common
+#' The \pkg{swaap} package provides common
 #' functions for prepping school-wide assessment
 #' data collected by the Center for School
 #' Behavioral Health Massachusetts General

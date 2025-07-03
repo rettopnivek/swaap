@@ -6,7 +6,7 @@
 \alias{swaap}
 \title{School-Wide Assessment Analysis Preparation}
 \description{
-The \pkg{swwap} package provides common
+The \pkg{swaap} package provides common
 functions for prepping school-wide assessment
 data collected by the Center for School
 Behavioral Health Massachusetts General

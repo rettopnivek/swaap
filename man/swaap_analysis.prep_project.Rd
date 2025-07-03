@@ -17,7 +17,7 @@ each function with.}
 \value{
 As a side effect creates the 'Source'
 and 'R' folders, and creates a '_targets.R' and
-'R01-Data_processing.R' scripts.
+'R/R01-Data_processing.R' scripts.
 }
 \description{
 Function to generate folders and R script
