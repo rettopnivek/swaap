@@ -118,9 +118,8 @@ swaap_select.base <- function(
     'SSS.DTT.SurveyStart',
     'SSS.DTT.SurveyEnd',
     'IDN.CHR.Record.ID',
-    'IDN.INT.LAS.ID',
     'IDN.CHR.LocallyAssignedSchool.ID',
-    'IDN.INT.LAS.ID',
+    'IDN.CHR.LAS.ID',
     'SSS.INT.Grade'
   )
 

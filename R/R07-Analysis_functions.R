@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-06-11
+# Last updated 2025-07-03
 
 # Table of contents
 # 1) swaap_analysis.prep_project
@@ -347,12 +347,40 @@ swaap_analysis.source_scripts <- function(
 }
 
 #### 3) swaap_analysis.schools ####
+#' Create School-Level Summary
+#'
+#' Create a school-level data set and optionally create
+#' school-level summaries for a specified set of measures.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#' @param chr_measure An optional character vector, the
+#'   additional columns in \code{dtf_data} over which to
+#'   create school-level summaries.
+#' @param fun_summary A function to compute the univariate
+#'   statistic for the school-level summaries.
+#'
+#' @returns A data frame.
+#'
+#' @export
 
 swaap_analysis.schools <- function(
-    dtf_data ) {
+    dtf_data,
+    chr_measure = NULL,
+    fun_summary = NULL ) {
+
+  # Default summary statistic
+  if ( is.null(fun_summary) ) {
+
+    fun_summary <- function(x) mean(x, na.rm = TRUE )
+
+    # Close 'Default summary statistic'
+  }
 
   dtf_SCH <- dtf_data |>
     dplyr::group_by(
+      District = SSS.INT.DistrictCode,
       School = SSS.INT.SchoolCode,
       Wave = SSS.INT.LongitudinalWave,
       Time = SSS.INT.TimePoint,
@@ -368,6 +396,51 @@ swaap_analysis.schools <- function(
       .groups = 'drop'
     ) |>
     data.frame()
+
+  # Additional measures to summarize over
+  if ( !is.null( chr_measure ) ) {
+
+    # Vector not named
+    if ( is.null( names(chr_measure) ) ) {
+
+      names(chr_measure) <- sapply(
+        chr_measure, function(s) {
+          strsplit( s, '.', fixed = TRUE )[[1]] |> tail(n = 1)
+        }
+      )
+
+      # Close 'Vector not named'
+    }
+
+    # Loop over measures
+    for ( m in seq_along(chr_measure) ) {
+
+      # Initialize summary column
+      dtf_SCH[[ names(chr_measure)[m] ]] <- NA
+
+      # Loop over rows
+      for ( r in 1:nrow(dtf_SCH) ) {
+
+        lgc_subset <-
+          dtf_data$SSS.INT.SurveyYear %in% dtf_SCH$Year[r] &
+          dtf_data$SSS.INT.SchoolCode %in% dtf_SCH$School[r] &
+          dtf_data$SSS.INT.Grade %in% dtf_SCH$Grade[r] &
+          dtf_data$SSS.INT.LongitudinalWave %in% dtf_SCH$Wave[r] &
+          dtf_data$SSS.INT.SurveyYear %in% dtf_SCH$Year[r] &
+          dtf_data$SSS.INT.TimePoint %in% dtf_SCH$Time[r]
+
+        dtf_SCH[[ names(chr_measure)[m] ]][r] <- fun_summary(
+          dtf_data[[ chr_measure[m] ]][lgc_subset]
+        )
+
+        # Close 'Loop over rows'
+      }
+
+      # Close 'Loop over measures'
+    }
+
+    # Close 'Additional measures to summarize over'
+  }
 
   return( dtf_SCH )
 }

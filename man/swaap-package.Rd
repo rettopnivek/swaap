@@ -15,7 +15,7 @@ provides the linking code used to
 connect records across time points.
 }
 \author{
-\strong{Maintainer}: Kevin Potter \email{kpotter5@mgh.harvard.edu} (\href{https://orcid.org/YOUR-ORCID-ID}{ORCID})
+\strong{Maintainer}: Kevin Potter \email{kpotter5@mgh.harvard.edu} (\href{https://orcid.org/0000-0002-3845-0512}{ORCID})
 
 Other contributors:
 \itemize{

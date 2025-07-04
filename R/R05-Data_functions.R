@@ -1768,6 +1768,8 @@ swaap_data.deidentified <- function(
   chr_columns <- colnames(dtf_data)
 
   chr_remove <- c(
+    'IDN.CHR.LocallyAssignedSchool.ID',
+    'IDN.CHR.LAS.ID',
     swaap::swaap_select.contact(),
     swaap::swaap_select.linking(),
     swaap::swaap_select.linking(lgc_original = TRUE),
