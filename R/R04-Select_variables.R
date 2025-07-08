@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-03
+# Last updated 2025-07-08
 
 # Table of contents
 # 1) swaap_select
@@ -595,7 +595,10 @@ swaap_select.misc <- function(
     paste0(
       'SBJ.LGC.SoughtHelp.',
       chr_terms
-    )
+    ),
+    'SBJ.LGC.CloseConnection.Friend',
+    'SBJ.LGC.CloseConnection.Parent',
+    'SBJ.LGC.CloseConnection.Teacher'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )

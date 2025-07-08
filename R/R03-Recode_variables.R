@@ -3,7 +3,7 @@
 # email: kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-02
+# Last updated 2025-07-08
 
 # Table of contents
 # B) swaap_recode.base
@@ -791,7 +791,8 @@ swaap_recode.linking <- function(
 #' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
-#' \code{'SBJ.CHR.PrescribedMedicationHealth'}, and
+#' \code{'SBJ.CHR.PrescribedMedicationHealth'},
+#' \code{'SBJ.LGC.CloseConnection.<Type>'}, and
 #' \code{'SBJ.LGC.SoughtHelp.<Type>'}.
 #'
 #' @export
@@ -807,6 +808,24 @@ swaap_recode.misc <- function(
       'Yes',
       'Not sure'
     )[ dtf_data$INV.INT.Health.Medication + 1 ]
+
+  chr_terms <- c(
+    Friend = 'Friend',
+    Adult.Parent = 'Parent',
+    Adult.Teacher = 'Teacher'
+  )
+
+  # Loop over terms
+  for ( i in seq_along(chr_terms) ) {
+
+    chr_old <- paste0( 'INV.INT.CloseConnection.', names(chr_terms)[i] )
+    chr_new <- paste0( 'SBJ.LGC.CloseConnection.', chr_terms[i] )
+
+    if ( chr_old %in% chr_columns )
+      dtf_data[[ chr_new ]] <- as.logical( dtf_data[[ chr_old ]] )
+
+    # Close 'Loop over terms'
+  }
 
   chr_terms <- c(
     'None', # 0

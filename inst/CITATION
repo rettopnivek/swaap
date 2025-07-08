@@ -3,6 +3,6 @@ bibentry(
   title    = "swaap",
   author   = "Kevin Potter and Michael Pascale and Jasmeen Kaur",
   year     = "2025",
-  note     = "R package version 0.9.6",
+  note     = "R package version 0.9.7",
   url      = "https://github.com/rettopnivek/swaap"
 )
