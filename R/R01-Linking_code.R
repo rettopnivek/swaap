@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-09-03
+# Last updated: 2025-10-10
 
 # TO DO:
 # - Add tests for swaap_link
@@ -2669,7 +2669,7 @@ swaap_link.input.combos <- function(
     for ( s in seq_along(lst_combos) ) {
 
       lgc_indices_match <-
-        all( unique( unlist( lst_combos ) ) %in% seq_along(lst_items[[s]] ) )
+        all( unique( unlist( lst_combos[[s]] ) ) %in% seq_along(lst_items[[s]] ) )
 
       # Confirm that indices correspond to items
       if ( !lgc_indices_match )
