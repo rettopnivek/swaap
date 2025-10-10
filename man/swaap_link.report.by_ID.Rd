@@ -4,22 +4,61 @@
 \alias{swaap_link.report.by_ID}
 \title{Linkage Patterns by Linked Identifier}
 \usage{
-swaap_link.report.by_ID(dtf_linked, lgc_update = FALSE)
+swaap_link.report.by_ID(
+  dtf_linked,
+  chr_measures = "SSS.INT.TimePoint",
+  fun_summary = NULL,
+  chr_start = "LNK.CHR.",
+  chr_end = "s",
+  lst_args = NULL,
+  lgc_update = FALSE
+)
 }
 \arguments{
 \item{dtf_linked}{A data frame, output from the
 \link{swaap_link} function. Must have the columns
-\code{IDN.CHR.Linked.ID} and \code{SSS.INT.TimePoint}.}
+\code{IDN.CHR.Linked.ID}.}
+
+\item{chr_measures}{A character vector, the columns in
+\code{dtf_linked} to summarize per unique value of
+\code{IDN.CHR.Linked.ID}.}
+
+\item{fun_summary}{An optional function to summarize
+a vector of values. Default is to sort values
+and concatenate with a hyphen.}
+
+\item{chr_start}{A character vector (length cannot
+exceed \code{chr_measures}), the start of each
+name for the new summary variables.}
+
+\item{chr_end}{A character vector (length cannot
+exceed \code{chr_measures}), the end of each
+name for the new summary variables.}
+
+\item{lst_args}{An optional list of additional inputs
+for the \code{fun_summary} function. If less than
+5 elements are provided, expanded to 5 elements
+via \link[base:rep]{base::rep_len}, each element is passed as
+an additional argument to \code{fun_summary}
+per each measure.}
+
+\item{lgc_update}{A logical value; if \code{TRUE}
+merges the wide-form summary variables by ID
+with the original long-form data frame
+\code{dtf_linked}.}
 }
 \value{
 A wide-form data frame with one row
 per linked ID along with the pattern of linked
 time points (e.g., \code{'0-1'} means a link
-from baseline to the first time point).
+from baseline to the first time point). If
+\code{lgc_update} is \code{TRUE}, instead
+returns an updated version of \code{dtf_linked}.
 }
 \description{
-Function to determine the pattern of linked time
-points for each linked ID.
+Function to summarize measures by linked IDs.
+As default summarizes the pattern of linked
+time points.
 }
 \author{
 Kevin Potter

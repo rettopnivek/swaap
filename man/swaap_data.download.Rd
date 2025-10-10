@@ -19,7 +19,11 @@ path to the user's Dropbox folder.}
 
 \item{chr_data}{A character vector, the data sets
 to copy, in the format \code{'<Year> <Semester>'}
-(e.g., \code{c( '2023 Fall', '2024 Fall' )}).}
+(e.g., \code{c( '2023 Fall', '2024 Fall' )}).
+Can also be either \code{'Merged Linked Data'} or
+\code{'CAM External Share'}, in which case
+pre-prepared merged and linked data will be downloaded
+instead.}
 
 \item{lgc_complete}{A logical value; if \code{TRUE}
 downloads the full data set that includes

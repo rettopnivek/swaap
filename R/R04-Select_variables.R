@@ -1,9 +1,13 @@
 # Functions to select variables
-# Written by Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Written by...
+#   Kevin Potter
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-08
+# Last updated 2025-08-20
 
 # Table of contents
 # 1) swaap_select
@@ -13,12 +17,20 @@
 #   3.C) swaap_select.contact
 #   3.D) swaap_select.demographics
 #   3.E) swaap_select.experience
+# I) swaap_select.intermittent
+#   I.1) Close connections [2024]
+#   I.2) Language [2023-2024]
 #   3.I) swaap_select.inventories
 #   3.L) swaap_select.linked
 #   3.L) swaap_select.linking
+#   3.M) swaap_select.misc
+#   M.1) Prescribed medication [2022+]
+#   M.2) Help-seeking [2020+]
 #   3.Q) swaap_select.quality
 #   3.S) swaap_select.SBIRT
 #   3.S) swaap_select.substances
+#   3.S) swaap_select.suicidality
+# 4) %s%
 
 #### 1) swaap_select ####
 #' Select Columns
@@ -238,7 +250,43 @@ swaap_select.experience <- function(
     'SBJ.LGC.Experience.SuspensionsAny',
     'SBJ.LGC.Experience.SuspensionsDrug',
     'SBJ.CHR.Experience.GradesInSchool',
-    'SBJ.INT.Experience.GradesInSchool'
+    'SBJ.INT.Experience.GradesInSchool',
+    'SBJ.CHR.Experience.IEP'
+  )
+
+  chr_output <- swaap_select.merge( chr_input, chr_add )
+
+  return( chr_output )
+}
+
+#### I) swaap_select.intermittent ####
+#' Select Intermittent Variables
+#'
+#' Function to select columns for variables that
+#' were measured at intermittent time points.
+#'
+#' @param chr_input An optional character
+#'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A character vector.
+#'
+#' @export
+
+swaap_select.intermittent <- function(
+    chr_input = NULL) {
+
+  chr_add <- c(
+    #### I.1) Close connections [2024] ####
+    'SBJ.LGC.CloseConnection.Friend',
+    'SBJ.LGC.CloseConnection.Parent',
+    'SBJ.LGC.CloseConnection.Teacher',
+    'SBJ.INT.CloseConnection.Happiness',
+    'SBJ.CHR.CloseConnection.Happiness',
+    #### I.2) Language [2023-2024] ####
+    'SBJ.LGC.FirstLanguage.English',
+    'SBJ.LGC.HomeLanguage.English'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -383,19 +431,27 @@ swaap_select.inventories <- function(
       chr_add,
       'INV.INT.PHQ4.Anxiety',
       'INV.INT.PHQ4.Depression',
-      'INV.INT.PHQ4.Total'
+      'INV.INT.PHQ4.Total',
+      'INV.CHR.PHQ4.CutOffs',
+      'INV.LGC.PHQ4.Distress',
+      'INV.LGC.PHQ4.Anxiety',
+      'INV.LGC.PHQ4.Depression'
     )
 
   if ( 'ERS' %in% chr_measures )
     chr_add <- c(
       chr_add,
-      'INV.INT.ERS.Total'
+      'INV.INT.ERS.Total',
+      'INV.INT.ERS.Sensitivity',
+      'INV.INT.ERS.Persistence',
+      'INV.INT.ERS.Intensity'
     )
 
   if ( 'AUDIT' %in% chr_measures )
     chr_add <- c(
       chr_add,
-      'INV.INT.AUDIT.Total'
+      'INV.INT.AUDIT.Total',
+      'INV.CHR.AUDIT.CutOffs'
     )
 
   if ( 'ADDI' %in% chr_measures )
@@ -408,7 +464,9 @@ swaap_select.inventories <- function(
   if ( 'APSS' %in% chr_measures )
     chr_add <- c(
       chr_add,
-      'INV.DBL.APSS.Total'
+      'INV.DBL.APSS.Total',
+      'INV.CHR.APSS.CutOffs',
+      'INV.LGC.APSS.AtRisk'
     )
 
   if ( length(chr_add) == 0 )
@@ -475,6 +533,9 @@ swaap_select.linked <- function(
 #'
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
+#' @param lgc_district A logical value; if
+#'   \code{TRUE} uses district codes instead
+#'   of school codes.
 #' @param lgc_original A logical value; if
 #'   \code{TRUE} uses original variable
 #'   names instead of recoded ones.
@@ -482,6 +543,9 @@ swaap_select.linked <- function(
 #'   \code{TRUE} returns column names for
 #'   variables specifically formatted to
 #'   work with [fastLink::fastLink].
+#' @param lgc_all A logical value; if
+#'   \code{TRUE} returns all possible
+#'   linking items.
 #'
 #' @author Kevin Potter
 #'
@@ -491,16 +555,17 @@ swaap_select.linked <- function(
 
 swaap_select.linking <- function(
     chr_input = NULL,
+    lgc_district = FALSE,
     lgc_original = FALSE,
-    lgc_fastLink = FALSE ) {
+    lgc_fastLink = FALSE,
+    lgc_all = FALSE ) {
 
-  chr_add <- c(
+  chr_default <- c(
     'SBJ.INT.Link.SchoolCode',
     # Locally assigned school ID
     'SBJ.INT.Link.SchoolID',
     # Linking questions
     #   ranked from least to most discrepant
-    'SBJ.INT.Link.KindergartenYearEst',
     'SBJ.CHR.Link.Sex',
     'SBJ.CHR.Link.BirthYearMonth',
     'SBJ.CHR.Link.MiddleInitial',
@@ -509,23 +574,57 @@ swaap_select.linking <- function(
     'SBJ.CHR.Link.Streetname'
   )
 
+  chr_original <- c(
+    'SSS.INT.School.Code',
+    # Locally assigned school ID
+    'IDX.INT.Origin.LASID',
+    # Linking questions
+    #   ranked from least to most discrepant
+    'SBJ.FCT.Sex',
+    'SBJ.DTM.Dob',
+    'SBJ.FCT.Link.MiddleInitial',
+    'SBJ.FCT.Link.EyeColor',
+    'SBJ.FCT.Link.OlderSiblings',
+    'SBJ.CHR.Link.Streetname'
+  )
+
+  chr_fastLink <- c(
+    'SBJ.INT.Link.SchoolCode',
+    # Locally assigned school ID
+    'SBJ.INT.Link.SchoolID',
+    # Linking questions
+    #   ranked from least to most discrepant
+    'SBJ.INT.Link.FL.Sex',
+    'SBJ.CHR.Link.FL.BirthYearMonth',
+    'SBJ.CHR.Link.FL.MiddleInitial',
+    'SBJ.INT.Link.FL.EyeColor',
+    'SBJ.INT.Link.FL.Siblings',
+    'SBJ.CHR.Link.FL.SiblingBirthMonth',
+    'SBJ.CHR.Link.FL.StreetName'
+  )
+
+  chr_misc <- c(
+    'SSS.INT.District.Code',
+    'SBJ.INT.Link.DistrictCode',
+    'SBJ.INT.Link.KindergartenYearEst'
+  )
+
+  # Use district code instead of school code
+  if (lgc_district) {
+
+    chr_default[1] <- 'SBJ.INT.Link.DistrictCode'
+    chr_original[1] <- 'SSS.INT.District.Code'
+    chr_fastLink[1] <- 'SBJ.INT.Link.DistrictCode'
+
+    # Close 'Use district code instead of school code'
+  }
+
+  chr_add <- chr_default
+
   # Original variable names
   if (lgc_original) {
 
-    chr_add <- c(
-      'SSS.INT.School.Code',
-      # Locally assigned school ID
-      'IDX.INT.Origin.LASID',
-      # Linking questions
-      #   ranked from least to most discrepant
-      'SBJ.INT.Link.KindergartenYearEst',
-      'SBJ.FCT.Sex',
-      'SBJ.DTM.Dob',
-      'SBJ.FCT.Link.MiddleInitial',
-      'SBJ.FCT.Link.EyeColor',
-      'SBJ.FCT.Link.OlderSiblings',
-      'SBJ.CHR.Link.Streetname'
-    )
+    chr_add <- chr_original
 
     # Close 'Original variable names'
   }
@@ -533,22 +632,19 @@ swaap_select.linking <- function(
   # Original variable names
   if (lgc_fastLink) {
 
-    chr_add <- c(
-      chr_add[1],
-      # Locally assigned school ID
-      chr_add[2],
-      # Linking questions
-      #   ranked from least to most discrepant
-      'SBJ.INT.Link.FL.Sex',
-      'SBJ.CHR.Link.FL.BirthYearMonth',
-      'SBJ.CHR.Link.FL.MiddleInitial',
-      'SBJ.INT.Link.FL.EyeColor',
-      'SBJ.INT.Link.FL.Siblings',
-      'SBJ.CHR.Link.FL.SiblingBirthMonth',
-      'SBJ.CHR.Link.FL.StreetName'
-    )
+    chr_add <- chr_fastLink
 
     # Close 'Original variable names'
+  }
+
+  # All linking items
+  if (lgc_all) {
+
+    chr_add <- unique(
+      c( chr_default, chr_original, chr_fastLink, chr_misc )
+    )
+
+    # Close 'All linking items'
   }
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -587,18 +683,19 @@ swaap_select.misc <- function(
     'SocialMediaSupport', # 10
     'EmergencyServices', # 11
     'RehabCenter', # 12
-    'NotListed' # 13
+    'NotListed', # 13
+    'Nurse', # 14
+    'YouthWellnessCoach' # 15
   )
 
   chr_add <- c(
+    #### M.1) Prescribed medication [2022+] ####
     'SBJ.CHR.PrescribedMedicationHealth',
+    #### M.2) Help-seeking [2020+] ####
     paste0(
       'SBJ.LGC.SoughtHelp.',
       chr_terms
-    ),
-    'SBJ.LGC.CloseConnection.Friend',
-    'SBJ.LGC.CloseConnection.Parent',
-    'SBJ.LGC.CloseConnection.Teacher'
+    )
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -856,6 +953,12 @@ swaap_select.suicidality <- function(
 
       if ( 'lgc_fastLink' %in% chr_lgc )
         lst_args$lgc_fastLink <- TRUE
+
+      if ( 'lgc_district' %in% chr_lgc )
+        lst_args$lgc_district <- TRUE
+
+      if ( 'lgc_all' %in% chr_lgc )
+        lst_args$lgc_all <- TRUE
 
       # Close 'Extra arguments for swaap_select.linking'
     }

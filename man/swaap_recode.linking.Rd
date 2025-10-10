@@ -13,6 +13,7 @@ school-wide assessment data.}
 }
 \value{
 A data frame with the additional variables
+\code{'SBJ.INT.Link.DistrictCode'},
 \code{'SBJ.INT.Link.SchoolCode'},
 \code{'SBJ.INT.Link.SchoolID'},
 \code{'SBJ.CHR.Link.Sex'},

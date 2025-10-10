@@ -2,10 +2,13 @@
 # Written by ...
 #   Jasmeen Kaur
 #   Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-15
+# Last updated: 2025-05-15
 
 # Table of contents
 # I) swaap_add.ID
@@ -395,7 +398,33 @@ swaap_add.SBIRT <- function(
     dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 0
     dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 2
 
-    # Close 'Grades/waves for 2023 Fall'
+    # Close 'Grades/waves for 2024 Fall'
+  }
+
+  # Grades/waves for 2025 Spring
+  if ( chr_year_semester %in% '2025 Spring' ) {
+
+    # First recruitment wave
+    lgc_SBIRT <-
+      ( dtf_data$SSS.INT.Grade %in% 10 & lgc_SBIRT_9th ) |
+      ( dtf_data$SSS.INT.Grade %in% 11 & lgc_SBIRT_10th )
+
+    # Update columns
+    dtf_data$SSS.LGC.SBIRT[lgc_SBIRT] <- TRUE
+    dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 3
+    dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 1
+
+    # Second recruitment wave
+    lgc_SBIRT <-
+      ( dtf_data$SSS.INT.Grade %in% 9 & lgc_SBIRT_9th ) |
+      ( dtf_data$SSS.INT.Grade %in% 10 & lgc_SBIRT_10th )
+
+    # Update columns
+    dtf_data$SSS.LGC.SBIRT[lgc_SBIRT] <- TRUE
+    dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 1
+    dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 2
+
+    # Close 'Grades/waves for 2025 Spring'
   }
 
   return( dtf_data )

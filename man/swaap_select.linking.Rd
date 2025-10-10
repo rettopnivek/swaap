@@ -6,13 +6,19 @@
 \usage{
 swaap_select.linking(
   chr_input = NULL,
+  lgc_district = FALSE,
   lgc_original = FALSE,
-  lgc_fastLink = FALSE
+  lgc_fastLink = FALSE,
+  lgc_all = FALSE
 )
 }
 \arguments{
 \item{chr_input}{An optional character
 vector, additional columns to include.}
+
+\item{lgc_district}{A logical value; if
+\code{TRUE} uses district codes instead
+of school codes.}
 
 \item{lgc_original}{A logical value; if
 \code{TRUE} uses original variable
@@ -22,6 +28,10 @@ names instead of recoded ones.}
 \code{TRUE} returns column names for
 variables specifically formatted to
 work with \link[fastLink:fastLink]{fastLink::fastLink}.}
+
+\item{lgc_all}{A logical value; if
+\code{TRUE} returns all possible
+linking items.}
 }
 \value{
 A character vector.

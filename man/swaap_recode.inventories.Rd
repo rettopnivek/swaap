@@ -16,11 +16,18 @@ A data frame with the additional variables
 \code{'INV.INT.AUDIT.Total'},
 \code{'INV.INT.AUDIT.Q1.<Label>'} to
 \code{'INV.INT.AUDIT.Q10.<Label>'},
-\code{'INV.INT.ADDI.Total'},
+\code{'INV.CHR.AUDIT.CutOffs'},
+\code{'INV.INT.ADDI.D.Total'},
+\code{'INV.INT.ADDI.U.Total'},
 \code{'INV.INT.ADDI.Q1.<Label>'} to
 \code{'INV.INT.ADDI.Q15.<Label>'},
+\code{'INV.INT.ERS.Persistence'},
+\code{'INV.INT.ERS.Sensitivity'},
+\code{'INV.INT.ERS.Intensity'},
 \code{'INV.INT.ERS.Q01.<Subscale>.<Label>'} to
-\code{'INV.INT.ERS.Q21.<Subscale>.<Label>'}.
+\code{'INV.INT.ERS.Q21.<Subscale>.<Label>'},
+\code{'INV.CHR.APSS.CutOffs'},
+\code{'INV.LGC.APSS.AtRisk'}.
 }
 \description{
 Renames inventory variables for easy selection.

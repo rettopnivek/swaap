@@ -1,9 +1,13 @@
 # Analysis functions
-# Written by Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Written by...
+#   Kevin Potter
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-03
+# Last updated: 2025-07-03
 
 # Table of contents
 # 1) swaap_analysis.prep_project

@@ -13,7 +13,9 @@ swaap_link(
   lst_combos = NULL,
   lst_missing = NULL,
   fun_trim_duplicates = NULL,
-  lst_fastLink_args = NULL,
+  lst_fastLink_args = list(threshold.match = 0.9, chr_exact = ""),
+  lgc_duplicates = FALSE,
+  lgc_district = FALSE,
   chr_progress = "bar"
 )
 }
@@ -46,14 +48,17 @@ linking items for different sets when necessary. If
 \code{NULL} attempts to identify linking items based on
 standardized names.}
 
-\item{lst_combos}{A list of lists, where each sublist consists of
-an integer vector indexing the combination of linking items to
-consider in order of priority. One sublist of integer vectors must
-be defined for each set defined by \code{lst_sets}. For a
-given sublist, indices apply to the character vector defined
-for the relevant set in \code{obj_items}, meaning that if
-character vectors differ across sets, indices should be defined
-accordingly.}
+\item{lst_combos}{A list of lists. For \code{chr_method = 'dissimilarity'}
+each sublist consists of an integer vector indexing the combination
+of linking items to consider in order of priority. One sublist of
+integer vectors must be defined for each set defined by
+\code{lst_sets}. For a given sublist, indices apply to the
+character vector defined for the relevant set in \code{obj_items},
+meaning that if character vectors differ across sets, indices
+should be defined accordingly.
+For \code{chr_method = 'fastLink'} each sublist consists of
+integer indices for the items to pass to the \code{stringdist},
+\code{numeric}, and \code{partial} arguments for \link[fastLink:fastLink]{fastLink::fastLink}.}
 
 \item{lst_missing}{A list of lists, where each sublist consists of
 an integer vector indicating which items should be checked for
@@ -64,12 +69,20 @@ combo, ensures that if these extra items are non-missing for a
 record, the record will not be linked. This behavior can be
 suppressed by supplying \code{c()} instead of an integer vector,
 which in turn allows for matches with a dissimilarity score
-greater than 0.}
+greater than 0. Only applicable for \code{chr_method = 'dissimilarity'}.}
 
 \item{fun_trim_duplicates}{An optional function that returns
 a logical vector for the subset of duplicate records
 indicating which records should be kept (return \code{TRUE}).
 Default is to select record with the highest completion rate.}
+
+\item{lgc_duplicates}{A logical value; if \code{TRUE} when
+generating default values for \code{lst_sets} does so to
+check for duplicate records within a time point.}
+
+\item{lgc_district}{A logical value; if \code{TRUE} when
+generating default values for \code{obj_items} uses
+district codes rather than school codes.}
 
 \item{chr_progress}{A character string, either \code{'bar'}
 (progress bar to track function completion), \code{'section'}

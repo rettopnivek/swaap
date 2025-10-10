@@ -16,8 +16,9 @@ A data frame with the additional variables
 \code{'SBJ.LGC.Experience.PlaySports'},
 \code{'SBJ.LGC.Experience.SuspensionsAny'},
 \code{'SBJ.LGC.Experience.SuspensionsDrug'},
-\code{'SBJ.CHR.Experience.GradesInSchool'}, and
-\code{'SBJ.INT.Experience.GradesInSchool'}.
+\code{'SBJ.CHR.Experience.GradesInSchool'},
+\code{'SBJ.INT.Experience.GradesInSchool'}, and
+\code{'SBJ.CHR.Experience.IEP'}.
 }
 \description{
 Recodes school experience items for easy selection.

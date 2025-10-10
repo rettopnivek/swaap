@@ -6,486 +6,95 @@
 #   Kevin Potter
 # Email:
 #   kpotter5@mgh.harvard.edu
-# Please email us directly if you
+# Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-05-17
+# Last updated: 2025-09-03
+
+# TO DO:
+# - Add tests for swaap_link
+#   * Exact matching (school)
+#   * Exact matching (district)
+#   * fastLink (school)
+#   * fastLink (district)
+#   * fastLink (contact info)
+# - Add exact matching component to fastLink
+# - Confirm linking works with districts
+# - Add adaptive process for linking via districts
+#   for middle to high school transition
+# - Create 'true' links data set to test linking
 
 # Table of contents
 # 1) Internal functions
-#   1.1) swaap_link.internal.inputs
-#     1.1.1) lst_sets
-#     1.1.2) lst_items
-#     1.1.3) lst_combos
-#     1.1.4) lst_missing
+#   1.1) swaap_link.internal.assign_IDs
+#     1.1.1) Setup
+#     1.1.2) Identify links
 #   1.2) swaap_link.internal.via_dissimilarity
 #     1.2.1) Setup
 #     1.2.2) Identify rows for linking
 #     1.2.3) Match over all records and items
 #     1.2.4) Compute dissimilarity scores
 #   1.3) swaap_link.internal.via_group_by
-#     1.3.1) fun_collapse_rows
-#     1.3.2) Setup
-#     1.3.3) Match records via items
-#     1.3.4) Identify linked rows
-#   1.4) swaap_link.internal.assign_IDs
+#     1.3.1) Setup
+#     1.3.2) Match records via items
+#     1.3.3) Identify linked rows
+#   1.4) swaap_link.internal.via_fastLink
 #     1.4.1) Setup
-#     1.4.2) Identify links
+#     1.4.2) Identify rows for linking
+#     1.4.3) Run fastLink
 # 2) swaap_link
 #   2.1) Setup
 #     2.1.1) fun_copy_prior
 #   2.2) Link records
 #   2.3) Assign IDs
 #   2.4) Final trimming of duplicates
-# 3) Helper functions
-#   3.1) swaap_link.helper.input
-#     3.1.1) Setup
-#     3.1.2) Sets
-#       3.1.2.1) Default - SBIRT
-#       3.1.2.2) Default - survey
-#       3.1.2.3) Duplicates - SBIRT
-#       3.1.2.4) Duplicates - survey
-#     3.1.3) Items
-#     3.1.4) Combos
-#       3.1.4.1) fun_combos
-#     3.1.5) Missing
-#       3.1.5.1) fun_missing
-#   3.2) swaap_link.helper.parameters
-#   3.3) swaap_link.helper.rows
-#   3.4) swaap_link.helper.trim
-#   3.5) swaap_link.helper.trim_rule
+# 3) Input functions
+#   3.1) swaap_link.input.sets
+#     3.1.1) Default - SBIRT
+#     3.1.2) Default - survey
+#     3.1.3) Duplicates - SBIRT
+#     3.1.4) Duplicates - survey
+#     3.1.5) Check input
+#   3.2) swaap_link.input.items
+#   3.3) swaap_link.input.combos
+#     3.3.1) Exact matching
+#     3.3.2) fastLink
+#   3.4) swaap_link.input.missing
+# 4) Helper functions
+#   4.1) swaap_link.parameters
+#   4.2) swaap_link.rows
+#   4.3) swaap_link.trim
+#   4.4) swaap_link.trim_rule
 #     3.5.1) List of defined rules
-#     3.5.2) Rules for trimming duplicates
-#       3.5.2.1) fun_rule.completed
-#       3.5.2.2) fun_rule.outcome_and_completed
-#     3.5.3) Return specified rule
-#   3.6) swaap_link.helper.similarity
-# 4) Report functions
-#   4.1) swaap_link.report.by_ID
-#   4.2) swaap_link.report
-#   4.1) Setup
+#     4.4.2) Rules for trimming duplicates
+#       4.4.2.1) fun_rule.completed
+#       4.4.2.2) fun_rule.outcome_and_completed
+#       4.4.2.3) fun_rule.duplicate_times
+#     4.4.3) Return specified rule
+#   4.5) swaap_link.similarity
+#   4.6) swaap_link.sets
+#   3.8) swaap_link.timepoints
+#   3.9) swaap_link.linked_over
+# 5) Report functions
+#   5.1) swaap_link.report.by_ID
+#   5.2) swaap_link.report
+#     5.2.1) Setup
 #   #5.2) Linkage patterns [Overall]
 #   #5.3) Linkage patterns [Groups]
 #   #5.4) Any linked [Overall]
-#   4.?) ...
-#   4.3) swaap_link.report.discrepant
-#     4.3.1) Setup
-#     4.3.2) Plotting
-#       4.3.2.1) Panel 1
-#       4.3.2.2) Panel 2
-#       4.3.2.3) Panel 3
-#       4.3.2.4) Panel 4
+#     5.2.?) ...
+#   5.3) swaap_link.report.discrepant
+#     5.3.1) Setup
+#     5.3.2) Plotting
+#       5.3.2.1) Panel 1
+#       5.3.2.2) Panel 2
+#       5.3.2.3) Panel 3
+#       5.3.2.4) Panel 4
+#   5.4) swaap_link.report.comparison
+
 
 #### 1) Internal functions ####
 
-#### 1.1) swaap_link.internal.inputs ####
-# Check Inputs and Define Defaults
-#
-# Internal function to check inputs for the swaap_link
-# function and generate default inputs if necessary.
-#
-# @param 'dtf_long' A data frame, assumed to be standard processed
-#   school-wide assessment data with the columns
-#   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
-#   as well as the linking code items.
-# @param 'obj_input' An R object, the given input to check.
-# @param 'chr_type' A character string, either 'lst_sets',
-#   'lst_items', 'lst_combos', or 'lst_missing', the
-#   type of input to check.
-# @param 'lst_sets' A list of lists, with each sublist specifying
-#   'Base' and 'Add' logical vectors for the pair of data subsets
-#   in 'dtf_long' to link over (e.g., 'Base' would subset the first
-#   time point and 'Add' would subset the second time point).
-# @param 'lst_items' A list of character vectors, one vector for
-#   each set defined in 'lst_sets'.
-# @param 'lst_combos' A list of lists, where each sublist consists of
-#   an integer vector indexing the combination of linking items to
-#   consider in order of priority. One sublist of integer vectors must
-#   be defined for each set defined by 'lst_sets'. For a
-#   given sublist, indices apply to the character vector defined
-#   for the relevant set in 'lst_items'.
-# @param 'obj_extra' Either NULL or 'fastLink' for selecting linking
-#   items.
-# @param 'lgc_progress' A logical value; if TRUE displays the
-#   progress of the function.
-#
-# @author Kevin Potter
-#
-# @returns A list, structured based on the given desired input.
-
-swaap_link.internal.inputs <- function(
-    dtf_long,
-    obj_input,
-    chr_type,
-    lst_sets = NULL,
-    lst_items = NULL,
-    lst_combos = NULL,
-    obj_extra = NULL,
-    lgc_progress = FALSE ) {
-
-  #### 1.1.1) lst_sets ####
-
-  # Check input for sets
-  if ( chr_type == 'lst_sets' ) {
-
-    # Default input
-    if ( is.null(obj_input) ) {
-
-      obj_input <- swaap::swaap_link.helper.input(
-        dtf_long,
-        'sets',
-        lgc_progress = lgc_progress
-      )
-
-      # Close 'Default input'
-    }
-
-    chr_error <-
-      paste0(
-        "\nArgument 'lst_sets' must be in format:\n",
-        "list(\n",
-        "  <Set> = list(\n",
-        "    Base = <logical vector>,\n",
-        "    Add = <logical vector>\n",
-        "  ),\n",
-        "  ...\n",
-        ")\n",
-        "\n",
-        "Logical vectors for 'Base' and 'Add' specify ",
-        "subset of rows to consider for the pair of ",
-        "time points to link"
-      )
-
-    # Make sure is list of lists
-    if ( !is.list(obj_input) ) stop(chr_error)
-
-    # Check input validity
-    lgc_checks_rows <- rep( FALSE, length(obj_input) )
-
-    # Loop over sets
-    for ( s in seq_along(obj_input) ) {
-
-      # Sublist not a list
-      if ( !is.list(obj_input[[s]] ) ) stop(chr_error)
-
-      # Sublist has wrong names
-      if ( !all( c( 'Base', 'Add' ) %in% names( obj_input[[s]] ) ) )
-        stop(chr_error)
-
-      lgc_checks_rows[s] <-
-        is.logical( obj_input[[s]]$Base ) &
-        is.logical( obj_input[[s]]$Add )
-
-      lgc_checks_rows[s] <-
-        length( obj_input[[s]]$Base ) == nrow(dtf_long) &
-        length( obj_input[[s]]$Add ) == nrow(dtf_long)
-
-      # Close 'Loop over sets'
-    }
-
-    if ( !all(lgc_checks_rows) )
-      stop( 'Check that logical vectors for sets are for current data' )
-
-    return( obj_input )
-
-    # Close 'Check input for sets'
-  }
-
-  #### 1.1.2) lst_items ####
-
-  # Check input for lst_items
-  if ( chr_type == 'lst_items' ) {
-
-    # Default input
-    if ( is.null(obj_input) ) {
-
-      obj_input <- dtf_long |>
-        swaap::swaap_link.helper.input(
-          chr_input = 'items',
-          lst_sets = lst_sets,
-          obj_extra = obj_extra,
-          lgc_progress = lgc_progress
-        )
-
-      # Close 'Default input'
-    }
-
-    # Convert character to list
-    if ( is.character(obj_input) ) {
-
-      obj_input <- lapply(
-        seq_along(lst_sets), function(s) {
-          return(obj_input)
-        }
-      )
-      names(obj_input) <- names(lst_sets)
-
-      # Close 'Convert character to list'
-    }
-
-    chr_error <-
-      paste0(
-        "\nArgument 'obj_items' must be a vector of ",
-        "column names to use as linking items or be ",
-        "in format:\n",
-        "list(\n",
-        "  <Set> = <Vector of column names>,\n",
-        "  ...\n",
-        ")\n",
-        "\n",
-        "Providing a list allows different items to ",
-        "be used across different pairs of time points"
-      )
-
-    # Make sure is list of lists
-    if ( !is.list(obj_input) ) stop(chr_error)
-
-    # Make sure has same number as sets
-    if ( length(obj_input) != length(lst_sets) )
-      stop( "Argument 'obj_items' must be same length as 'lst_sets'" )
-
-    lgc_in_data <- rep( FALSE, length(obj_input) )
-
-    # Loop over sets
-    for ( s in seq_along(obj_input) ) {
-
-      lgc_in_data[s] <- all( obj_input[[s]] %in% colnames(dtf_long) )
-
-      # Close 'Loop over sets'
-    }
-
-    if ( !all(lgc_in_data) )
-      stop( 'Must provide linking items found in data set' )
-
-    return( obj_input )
-
-    # Close 'Check input for lst_items'
-  }
-
-  #### 1.1.3) lst_combos ####
-
-  # Check input for lst_combos
-  if ( chr_type == 'lst_combos' ) {
-
-    lgc_fastLink <- FALSE
-
-    # Check for fastLink indicator
-    if ( !is.null(lst_items$fastLink) )
-      lgc_fastLink <- TRUE
-
-    # Default input
-    if ( is.null(obj_input) ) {
-
-      obj_input <- dtf_long |>
-        swaap::swaap_link.helper.input(
-          chr_input = 'combos',
-          obj_extra = lst_items,
-          lgc_progress = lgc_progress
-        )
-
-      # Close 'Default input'
-    }
-
-    # Error message for fastLink inputs
-    if ( lgc_fastLink ) {
-
-      chr_error <-
-        paste0(
-          "\nArgument 'lst_combos' must be a list of ",
-          "lists (one sublist for each set) consisting of ",
-          "the elements 'stringdist', 'numeric', and/or 'partial',",
-          " each with integer vectors indicating the items ",
-          "to use with string distance matching, numeric matching, and ",
-          "partial string matching, in the format:\n",
-          "list(\n",
-          "  <Set> = list(\n",
-          "    stringdist = <item indices>,\n",
-          "    numeric = <item indices>,\n",
-          "    partial = <item indices>,\n",
-          "  ),\n",
-          "  ...\n",
-          ")\n",
-          "\n",
-          "The order of combinations can be used to indicate ",
-          "which combos of linking items to prioritize when ",
-          "matching"
-        )
-
-      # Close 'Error message for fastLink inputs'
-    } else {
-
-      chr_error <-
-        paste0(
-          "\nArgument 'lst_combos' must be a list of ",
-          "lists (one sublist for each set) consisting of ",
-          "integer vectors indicating combinations of ",
-          "linking items to match over, in the format:\n",
-          "list(\n",
-          "  <Set> = list(\n",
-          "    <Combo> = <item indices>,\n",
-          "    ...\n",
-          "  ),\n",
-          "  ...\n",
-          ")\n",
-          "\n",
-          "The order of combinations can be used to indicate ",
-          "which combos of linking items to prioritize when ",
-          "matching"
-        )
-
-      # Close else for 'Error message for fastLink inputs'
-    }
-
-    # Make sure is list of lists
-    if ( !is.list(obj_input) ) stop(chr_error)
-
-    if (lgc_fastLink)
-      lst_items$fastLink <- NULL
-
-    # Make sure has same number as sets
-    if ( length(obj_input) != length(lst_items) )
-      stop( "Argument 'lst_combos' must be same length as 'lst_items'" )
-
-    lgc_in_data <- rep( TRUE, length(obj_input) )
-
-    # Loop over sets
-    for ( s in seq_along(obj_input) ) {
-
-      # Check is list of lists
-      if ( !is.list( obj_input[[s]] ) ) stop(chr_error)
-
-      # Standard linking
-      if ( !lgc_fastLink ) {
-
-        # Loop over sublists
-        for (l in seq_along( obj_input[[s]] ) ) {
-
-          lgc_in_data[s] <- all(
-            obj_input[[s]][[l]] %in% seq_along( lst_items[[s]] )
-          )
-
-          # Close 'Loop over sublists'
-        }
-
-        # Close 'Standard linking'
-      } else {
-
-        lgc_in_data[s] <- any(
-          c( 'stringdist', 'numeric', 'partial' ) %in%
-            names(obj_input[[s]])
-        )
-
-        # Close else for 'Standard linking'
-      }
-
-      # Close 'Loop over sets'
-    }
-
-    # Flag issues
-    if ( !all(lgc_in_data) ) {
-
-      if (!lgc_fastLink)
-        stop( 'Item indices for combos must match items provided' )
-      if (lgc_fastLink)
-        stop( paste0(
-          "Must specify item indices for 'stringidst', ",
-          "'numeric', or 'partial' sublist elements"
-          ) )
-
-      # Close 'Flag issues'
-    }
-
-    return( obj_input )
-
-    # Close 'Check input for lst_combos'
-  }
-
-  #### 1.1.4) lst_missing ####
-
-  # Check input for lst_missing
-  if ( chr_type == 'lst_missing' ) {
-
-    # Default input
-    if ( is.null(obj_input) ) {
-
-      obj_input <- swaap::swaap_link.helper.input(
-        dtf_long,
-        'missing',
-        obj_extra = list(
-          lst_items,
-          lst_combos
-        ),
-        lgc_progress = lgc_progress
-      )
-
-      # Close 'Default input'
-    }
-
-    chr_error <-
-      paste0(
-        "\nArgument 'lst_missing' must be a list of ",
-        "lists (one sublist for each set) consisting of ",
-        "integer vectors indicating which linking items ",
-        "to check for missingness per combo, in the format:\n",
-        "list(\n",
-        "  <Set> = list(\n",
-        "    <Combo> = <item indices>,\n",
-        "    ...\n",
-        "  ),\n",
-        "  ...\n",
-        ")\n",
-        "\n",
-        "If any items for a given combo are found missing no ",
-        "linking will be done for that record - this can be ",
-        "suppressed by using c() instead"
-      )
-
-    return( obj_input )
-
-    # Make sure is list of lists
-    if ( !is.list(obj_input) ) stop(chr_error)
-
-    # Make sure has same number as sets
-    if ( length(obj_input) != length(lst_items) )
-      stop( "Argument 'lst_missing' must be same length as 'lst_items'" )
-
-    lgc_in_data <- rep( TRUE, length(obj_input) )
-
-    # Loop over sets
-    for ( s in seq_along(obj_input) ) {
-
-      # Check is list of lists
-      if ( !is.list( obj_input[[s]] ) ) stop(chr_error)
-
-      # Make sure has same number as combos
-      if ( length(obj_input[[s]]) != length(lst_combos[[s]]) )
-        stop(
-          "Argument 'lst_missing' must have same structure as 'lst_combos"
-        )
-
-      # Loop over sublists
-      for (l in seq_along( obj_input[[s]] ) ) {
-
-        lgc_in_data[s] <- all(
-          obj_input[[s]][[l]] %in% seq_along( lst_items[[s]] )
-        )
-
-        # Close 'Loop over sublists'
-      }
-
-      # Close 'Loop over sets'
-    }
-
-    if ( !all(lgc_in_data) )
-      stop( 'Item indices for missing must match items provided' )
-
-
-    # Close 'Check input for lst_missing'
-  }
-
-  stop( '' )
-}
-
-#### 1.2) swaap_link.internal.assign_IDs ####
+#### 1.1) swaap_link.internal.assign_IDs ####
 # Assign Identifiers Based on Linkage
 #
 # @param 'dtf_long' A data frame, assumed to be standard processed
@@ -493,8 +102,9 @@ swaap_link.internal.inputs <- function(
 #   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
 #   as well as the linking code items. The data frame is
 #   assumed to have been run through either the function
-#   'swaap_link.internal.via_dissimilarity' or
-#   'swaap_link.internal.via_group_by' beforehand.
+#   'swaap_link.internal.via_dissimilarity',
+#   'swaap_link.internal.via_group_by', or
+#   'swaap_link.internal.via_fastLink' beforehand.
 # @param 'lgc_progress' A logical value; if TRUE displays the
 #   progress of the function using section labels.
 # @param 'lgc_progress_bar' A logical value; if TRUE displays the
@@ -509,7 +119,7 @@ swaap_link.internal.assign_IDs <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.2.1) Setup ####
+  #### 1.1.1) Setup ####
 
   if (lgc_progress) message( '    Setup for assigning IDs' )
 
@@ -528,7 +138,7 @@ swaap_link.internal.assign_IDs <- function(
     # Close 'No links'
   }
 
-  #### 1.2.2) Identify links ####
+  #### 1.1.2) Identify links ####
 
   if (lgc_progress) message( '    Identify links' )
 
@@ -665,7 +275,7 @@ swaap_link.internal.assign_IDs <- function(
   return( dtf_long )
 }
 
-#### 1.3) swaap_link.internal.via_dissimilarity ####
+#### 1.2) swaap_link.internal.via_dissimilarity ####
 # Link Records via Dissimiliarity Scores
 #
 # Internal function to conduct record linkage using
@@ -709,7 +319,7 @@ swaap_link.internal.via_dissimilarity <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.3.1) Setup ####
+  #### 1.2.1) Setup ####
 
   int_prog <- 0
 
@@ -737,7 +347,7 @@ swaap_link.internal.via_dissimilarity <- function(
     if (lgc_progress)
       message( paste0( '    Set: ', names(lst_sets)[s] ) )
 
-    #### 1.3.2) Identify rows for linking ####
+    #### 1.2.2) Identify rows for linking ####
 
     if ( lgc_progress )
       message( '    Identify rows for linking' )
@@ -780,7 +390,7 @@ swaap_link.internal.via_dissimilarity <- function(
       which(lgc_add), sum(lgc_base)
     )
 
-    #### 1.3.3) Match over all records and items ####
+    #### 1.2.3) Match over all records and items ####
 
     if ( lgc_progress )
       message( '      Compute matches over linking items' )
@@ -848,7 +458,7 @@ swaap_link.internal.via_dissimilarity <- function(
     # Force garbage collection
     gc()
 
-    #### 1.3.4) Compute dissimilarity scores ####
+    #### 1.2.4) Compute dissimilarity scores ####
 
     mat_diss_scores <- matrix(
       NA,
@@ -994,7 +604,7 @@ swaap_link.internal.via_dissimilarity <- function(
   return( dtf_long )
 }
 
-#### 1.4) swaap_link.internal.via_group_by ####
+#### 1.3) swaap_link.internal.via_group_by ####
 # Link Records via Grouping Factors
 #
 # Internal function to conduct record linkage using
@@ -1026,7 +636,7 @@ swaap_link.internal.via_group_by <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.4.1) Setup ####
+  #### 1.3.1) Setup ####
 
   chr_items <- unique( unlist( lst_items ) )
 
@@ -1053,7 +663,7 @@ swaap_link.internal.via_group_by <- function(
     dtf_long$LNK.LGC.Attempted[lgc_all] <- TRUE
     dtf_long$LNK.CHR.Method[lgc_all] <- 'group_by'
 
-    #### 1.4.2) Match records via items ####
+    #### 1.3.2) Match records via items ####
 
     if (lgc_progress) message( '    Group by items' )
 
@@ -1107,7 +717,7 @@ swaap_link.internal.via_group_by <- function(
       }
     )
 
-    #### 1.4.3) Identify linked rows ####
+    #### 1.3.3) Identify linked rows ####
 
     if (lgc_progress) message( '    Identify links' )
 
@@ -1187,7 +797,35 @@ swaap_link.internal.via_group_by <- function(
   return( dtf_long )
 }
 
-#### 1.5) swaap_link.internal.via_fastLink ####
+#### 1.4) swaap_link.internal.via_fastLink ####
+# Link Records Using fastLink Function
+#
+# Internal function to conduct record linkage using
+# the fastLink package tools.
+#
+# @param 'dtf_long' A data frame, assumed to be standard processed
+#   school-wide assessment data with the columns
+#   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
+#   as well as the linking code items.
+# @param 'lst_sets' A list of lists, with each sublist specifying
+#   'Base' and 'Add' logical vectors for the pair of data subsets
+#   in 'dtf_long' to link over (e.g., 'Base' would subset the first
+#   time point and 'Add' would subset the second time point).
+# @param 'lst_items' A list of character vectors, one vector for
+#   each set defined in 'lst_sets'.
+# @param 'lst_combos' A list of lists, where each sublist consists
+#   of integer indices for the items to pass to the 'stringdist',
+#   'numeric', and 'partial' arguments of the fastLink function.
+# @param 'lst_fastLink_args' A list of additional arguments to
+#   pass to the fastLink function.
+# @param 'lgc_progress' A logical value; if TRUE displays the
+#   progress of the function using section labels.
+# @param 'lgc_progress_bar' A logical value; if TRUE displays the
+#   progress of the function using a progress bar.
+#
+# @author Kevin Potter
+#
+# @returns A data frame.
 
 swaap_link.internal.via_fastLink <- function(
     dtf_long,
@@ -1198,7 +836,7 @@ swaap_link.internal.via_fastLink <- function(
     lgc_progress,
     lgc_progress_bar ) {
 
-  #### 1.5.1) Setup ####
+  #### 1.4.1) Setup ####
 
   int_prog <- 0
 
@@ -1221,7 +859,7 @@ swaap_link.internal.via_fastLink <- function(
     chr_prob <- paste0( 'LNK.DBL.PostProb.Set', s )
     dtf_long[[ chr_prob ]] <- NA
 
-    #### 1.5.2) Identify rows for linking ####
+    #### 1.4.2) Identify rows for linking ####
 
     if ( lgc_progress )
       message( '    Identify rows for linking' )
@@ -1244,7 +882,7 @@ swaap_link.internal.via_fastLink <- function(
       lgc_base | lgc_add
     ] <- 'fastLink'
 
-    #### 1.5.3) Run fastLink ####
+    #### 1.4.3) Run fastLink ####
 
     if (lgc_progress)
       message( paste0( '    Run fastLink' ) )
@@ -1293,6 +931,23 @@ swaap_link.internal.via_fastLink <- function(
       }
 
       # Close 'If combo input provided'
+    }
+
+    # If additional arguments provided
+    if ( !is.null(lst_fastLink_args) ) {
+
+      # Loop over elements
+      for ( l in seq_along(lst_fastLink_args) ) {
+
+        # Add argument
+        if ( names(lst_fastLink_args)[l] != 'chr_exact' )
+          lst_args[[ names(lst_fastLink_args)[l] ]] <-
+            lst_fastLink_args[[l]]
+
+        # Close 'Loop over elements'
+      }
+
+      # Close 'If additional arguments provided'
     }
 
     lst_fastLink <- suppressMessages( do.call(
@@ -1363,14 +1018,17 @@ swaap_link.internal.via_fastLink <- function(
 #'   linking items for different sets when necessary. If
 #'   \code{NULL} attempts to identify linking items based on
 #'   standardized names.
-#' @param lst_combos A list of lists, where each sublist consists of
-#'   an integer vector indexing the combination of linking items to
-#'   consider in order of priority. One sublist of integer vectors must
-#'   be defined for each set defined by \code{lst_sets}. For a
-#'   given sublist, indices apply to the character vector defined
-#'   for the relevant set in \code{obj_items}, meaning that if
-#'   character vectors differ across sets, indices should be defined
-#'   accordingly.
+#' @param lst_combos A list of lists. For \code{chr_method = 'dissimilarity'}
+#'   each sublist consists of an integer vector indexing the combination
+#'   of linking items to consider in order of priority. One sublist of
+#'   integer vectors must be defined for each set defined by
+#'   \code{lst_sets}. For a given sublist, indices apply to the
+#'   character vector defined for the relevant set in \code{obj_items},
+#'   meaning that if character vectors differ across sets, indices
+#'   should be defined accordingly.
+#'   For \code{chr_method = 'fastLink'} each sublist consists of
+#'   integer indices for the items to pass to the \code{stringdist},
+#'   \code{numeric}, and \code{partial} arguments for [fastLink::fastLink].
 #' @param lst_missing A list of lists, where each sublist consists of
 #'   an integer vector indicating which items should be checked for
 #'   missingness when linking using a given combo (therefore
@@ -1380,11 +1038,17 @@ swaap_link.internal.via_fastLink <- function(
 #'   record, the record will not be linked. This behavior can be
 #'   suppressed by supplying \code{c()} instead of an integer vector,
 #'   which in turn allows for matches with a dissimilarity score
-#'   greater than 0.
+#'   greater than 0. Only applicable for \code{chr_method = 'dissimilarity'}.
 #' @param fun_trim_duplicates An optional function that returns
 #'   a logical vector for the subset of duplicate records
 #'   indicating which records should be kept (return \code{TRUE}).
 #'   Default is to select record with the highest completion rate.
+#' @param lgc_duplicates A logical value; if \code{TRUE} when
+#'   generating default values for \code{lst_sets} does so to
+#'   check for duplicate records within a time point.
+#' @param lgc_district A logical value; if \code{TRUE} when
+#'   generating default values for \code{obj_items} uses
+#'   district codes rather than school codes.
 #' @param chr_progress A character string, either \code{'bar'}
 #'   (progress bar to track function completion), \code{'section'}
 #'   (lists completed sections to track function completion), or
@@ -1411,13 +1075,15 @@ swaap_link <- function(
     lst_combos = NULL,
     lst_missing = NULL,
     fun_trim_duplicates = NULL,
-    lst_fastLink_args = NULL,
+    lst_fastLink_args = list( threshold.match = .9, chr_exact = '' ),
+    lgc_duplicates = FALSE,
+    lgc_district = FALSE,
     chr_progress = 'bar' ) {
 
   if ( chr_progress != '' ) message( 'Start: swaap_link' )
 
   lgc_progress <- FALSE
-  lgc_progress_bar <- TRUE
+  lgc_progress_bar <- chr_progress != ''
 
   chr_progress_labels <- c(
     'label', 'labels',
@@ -1438,49 +1104,42 @@ swaap_link <- function(
   #### 2.1) Setup ####
   if (lgc_progress) message( '  Setup' )
 
+  lgc_fastLink <- 'fastLink' %in% chr_method
+
   # Check list of sets
-  lst_sets <- swaap:::swaap_link.internal.inputs(
+  lst_sets <- swaap::swaap_link.input.sets(
     dtf_long = dtf_long,
-    obj_input = lst_sets,
-    chr_type = 'lst_sets',
-    lgc_progress = lgc_progress
+    lst_sets = lst_sets,
+    lgc_duplicates = lgc_duplicates
   )
+  # Confirm if checking for duplicates
+  lgc_duplicates <- all( lst_sets[[1]]$Base == lst_sets[[1]]$Add )
 
   # Check linking items
-  lst_items <- swaap:::swaap_link.internal.inputs(
+  lst_items <- swaap::swaap_link.input.items(
     dtf_long = dtf_long,
-    obj_input = obj_items,
-    chr_type = 'lst_items',
     lst_sets = lst_sets,
-    obj_extra = list(
-      NULL,
-      'fastLink'
-    )[[ (chr_method %in% 'fastLink') + 1 ]],
-    lgc_progress = lgc_progress
+    obj_items = obj_items,
+    lgc_fastLink = lgc_fastLink,
+    lgc_district = lgc_district
   )
 
   # Additional inputs for dissimilarity method
   if ( chr_method %in% 'dissimilarity' ) {
 
     # Check combos
-    lst_combos <- swaap:::swaap_link.internal.inputs(
+    lst_combos <- swaap::swaap_link.input.combos(
       dtf_long = dtf_long,
-      obj_input = lst_combos,
-      chr_type = 'lst_combos',
-      lst_sets = lst_sets,
       lst_items = lst_items,
-      lgc_progress = lgc_progress
+      lst_combos = lst_combos
     )
 
     # Check missing
-    lst_missing <- swaap:::swaap_link.internal.inputs(
+    lst_missing <- swaap::swaap_link.input.missing(
       dtf_long = dtf_long,
-      obj_input = lst_missing,
-      chr_type = 'lst_missing',
-      lst_sets = lst_sets,
       lst_items = lst_items,
       lst_combos = lst_combos,
-      lgc_progress = lgc_progress
+      lst_missing = lst_missing
     )
 
     # Close 'Additional inputs for dissimilarity method'
@@ -1490,13 +1149,11 @@ swaap_link <- function(
   if ( chr_method %in% 'fastLink' ) {
 
     # Check combos
-    lst_combos <- swaap:::swaap_link.internal.inputs(
+    lst_combos <- swaap::swaap_link.input.combos(
       dtf_long = dtf_long,
-      obj_input = lst_combos,
-      chr_type = 'lst_combos',
-      lst_sets = lst_sets,
-      lst_items = c( lst_items, fastLink = TRUE ),
-      lgc_progress = lgc_progress
+      lst_items = lst_items,
+      lst_combos = lst_combos,
+      lgc_fastLink = TRUE
     )
 
     # Ensure numeric inputs
@@ -1607,6 +1264,8 @@ swaap_link <- function(
     dtf_long,
     'Linked'
   )
+  # Track original IDs
+  chr_old_ID <- dtf_long$IDN.CHR.Linked.ID
   # Indicator for whether linking attempted
   dtf_long$LNK.LGC.Attempted <- FALSE
   # Type of link method
@@ -1651,6 +1310,36 @@ swaap_link <- function(
   # Link using fastLink
   if ( chr_method == 'fastLink' ) {
 
+    # Initialize exact match argument
+    chr_exact <- NULL
+
+    # Check if any fastLink arguments
+    if ( !is.null(lst_fastLink_args) ) {
+
+      # Check for exact match arguments
+      if ( 'chr_exact' %in% names(lst_fastLink_args) ) {
+
+        chr_exact <- lst_fastLink_args$chr_exact
+
+        # Update argument list
+        if ( length( lst_fastLink_args ) == 1 ) {
+
+          lst_fastLink_args <- NULL
+
+          # Close 'Update argument list'
+        } else {
+
+          lst_fastLink_args$chr_exact <- NULL
+
+          # Close else for 'Update argument list'
+        }
+
+        # Close 'Check for exact match arguments'
+      }
+
+      # Close 'Check if any fastLink arguments'
+    }
+
     dtf_long <- dtf_long |>
       swaap:::swaap_link.internal.via_fastLink(
         lst_sets = lst_sets,
@@ -1681,6 +1370,70 @@ swaap_link <- function(
   # Remove intermediary variable
   dtf_long$LNK.LGC.Preliminary <- NULL
 
+  # Additional checking of duplicates
+  chr_check <- dtf_long$LNK.CHR.TimePoints[
+    dtf_long$LNK.LGC.NoIssues
+  ] |> unique()
+  int_dup <- sapply( chr_check, function(s) {
+    chr_unq <- strsplit( s, '-', fixed = TRUE )[[1]]
+    return(
+      length(chr_unq) - dplyr::n_distinct(chr_unq)
+    )
+  } )
+
+  # Fix duplicates
+  if ( any(int_dup > 0) ) {
+
+    dtf_long$LNK.LGC.NoIssues[
+      dtf_long$IDN.CHR.Linked.ID %in% dtf_long$IDN.CHR.Linked.ID[
+        dtf_long$LNK.CHR.TimePoints %in% chr_check[int_dup > 0]
+      ]
+    ] <- FALSE
+    dtf_long$LNK.LGC.Duplicates[
+      dtf_long$IDN.CHR.Linked.ID %in% dtf_long$IDN.CHR.Linked.ID[
+        dtf_long$LNK.CHR.TimePoints %in% chr_check[int_dup > 0]
+      ]
+    ] <- TRUE
+
+    # Close 'Fix duplicates'
+  }
+
+  # Fix broken matches
+  if ( any( nchar( dtf_long$LNK.CHR.TimePoints ) == 1 &
+            dtf_long$LNK.LGC.NoIssues ) ) {
+
+    dtf_check <- dtf_long |>
+      dplyr::filter(
+        LNK.CHR.TimePoints %in% as.character(
+          unique( dtf_long$SSS.INT.TimePoint )
+        ) &
+        dtf_long$LNK.LGC.NoIssues
+      )
+
+    # Loop over rows
+    for ( r in 1:nrow(dtf_check) ) {
+
+      lgc_matched <- grepl(
+        dtf_check$LNK.CHR.Rows[r],
+        dtf_long$LNK.CHR.Rows,
+        fixed = TRUE
+      )
+
+      dtf_long$IDN.CHR.Linked.ID[lgc_matched] <-
+        dtf_long$IDN.CHR.Linked.ID[
+          lgc_matched &
+          !dtf_long$IDN.CHR.Linked.ID %in% dtf_check$IDN.CHR.Linked.ID[r]
+        ][1]
+
+      dtf_long$LNK.LGC.NoIssues[lgc_matched] <- FALSE
+      dtf_long$LNK.LGC.Duplicates[lgc_matched] <- TRUE
+
+      # Close 'Loop over rows'
+    }
+
+    # Close 'Fix broken matches'
+  }
+
   # Additional processing for fastLink method
   if ( chr_method %in% 'fastLink' ) {
 
@@ -1693,7 +1446,7 @@ swaap_link <- function(
       if ( any( !is.na(vec_x) ) ) {
 
         vec_x <- vec_x[!is.na(vec_x)]
-        lgc_out <- vec_x[1] %in% vec_x
+        lgc_out <- all( vec_x %in% vec_x[1] )
 
         # Close 'Any non-missing'
       }
@@ -1701,56 +1454,90 @@ swaap_link <- function(
       return( lgc_out )
     }
 
-    chr_items <- lst_items |> unlist() |> unique()
+    dtf_long$LNK.LGC.fastLinkFalsePositive <-
+      rep( FALSE, nrow(dtf_long) )
 
-    chr_items <- chr_items[
-      chr_items %in% c(
-        'SBJ.INT.Link.SchoolCode',
-        'SSS.INT.SchoolCode',
-        'SBJ.CHR.Link.Sex',
-        'SBJ.INT.Link.FL.Sex',
-        'SBJ.CHR.Link.BirthYearMonth',
-        'SBJ.CHR.Link.FL.BirthYearMonth'
-      )
-    ]
+    # Items that must have exact matches
+    if ( !is.null(chr_exact) ) {
 
-    # If relevant items found
-    if ( length(chr_items) > 0 ) {
+      # Default
+      if ( chr_exact == '' ) {
 
-      dtf_IDs <- dtf_long |>
-        dplyr::group_by(
-          ID = IDN.CHR.Linked.ID
-        ) |>
-        dplyr::summarise_at(
-          chr_items, fun_equal
-        ) |>
-        data.frame()
+        chr_exact <- c(
+          'SBJ.INT.Link.DistrictCode',
+          'SSS.INT.DistrictCode',
+          'SBJ.INT.Link.SchoolCode',
+          'SSS.INT.SchoolCode',
+          'SBJ.CHR.Link.Sex',
+          'SBJ.INT.Link.FL.Sex',
+          'SBJ.CHR.Link.BirthYearMonth',
+          'SBJ.CHR.Link.FL.BirthYearMonth'
+        )
 
-      # More than one variable
-      if ( ncol(dtf_IDs) > 2 ) {
-
-        lgc_FP <- rowSums( dtf_IDs[, -1] ) < ( ncol(dtf_IDs) - 1 )
-
-        # Close 'More than one variable'
-      } else {
-
-        lgc_FP <- !dtf_IDs[[2]]
-
-        # Close else for 'More than one variable'
+        # Close 'Default'
       }
 
+      chr_items <- lst_items |> unlist() |> unique()
 
-      dtf_long$LNK.LGC.fastLinkFastPositive <-
-        dtf_long$IDN.CHR.Linked.ID %in% dtf_IDs$ID[
-          lgc_FP
+      chr_items <- chr_items[
+        chr_items %in% chr_exact
+      ]
+
+      # If relevant items found
+      if ( length(chr_items) > 0 ) {
+
+        dtf_IDs <- dtf_long |>
+          dplyr::filter(
+            LNK.LGC.NoIssues
+          ) |>
+          dplyr::group_by(
+            ID = IDN.CHR.Linked.ID
+          ) |>
+          dplyr::summarise_at(
+            chr_items, fun_equal
+          ) |>
+          data.frame()
+
+        # More than one variable
+        if ( ncol(dtf_IDs) > 2 ) {
+
+          lgc_FP <- rowSums( dtf_IDs[, -1] ) < ( ncol(dtf_IDs) - 1 )
+
+          # Close 'More than one variable'
+        } else {
+
+          lgc_FP <- !dtf_IDs[[2]]
+
+          # Close else for 'More than one variable'
+        }
+
+        dtf_long$LNK.LGC.fastLinkFalsePositive <-
+          dtf_long$IDN.CHR.Linked.ID %in% dtf_IDs$ID[
+            lgc_FP
+          ]
+
+        dtf_long$LNK.CHR.TimePoints[
+          dtf_long$LNK.LGC.fastLinkFalsePositive
+        ] <- as.character(
+          dtf_long$SSS.INT.TimePoint[
+            dtf_long$LNK.LGC.fastLinkFalsePositive
+          ]
+        )
+
+        dtf_long$LNK.LGC.NoIssues[
+          dtf_long$LNK.LGC.fastLinkFalsePositive
+        ] <- FALSE
+
+        dtf_long$IDN.CHR.Linked.ID[
+          dtf_long$LNK.LGC.fastLinkFalsePositive
+        ] <- chr_old_ID[
+          dtf_long$LNK.LGC.fastLinkFalsePositive
         ]
 
-      # Close 'If relevant items found'
-    } else {
+        # Close 'If relevant items found'
+      }
 
-      dtf_long$LNK.LGC.fastLinkFastPositive <- rep( FALSE, nrow(dtf_long) )
-
-      # Close else for 'If relevant items found'
+      # Close 'Items that must have exact matches'
     }
 
     # Close 'Additional processing for fastLink method'
@@ -1764,7 +1551,7 @@ swaap_link <- function(
     if (lgc_progress) message( '  Trim duplicates' )
 
     if ( is.null(fun_trim_duplicates) )
-      fun_trim_duplicates <- swaap::swaap_link.helper.trim_rule(
+      fun_trim_duplicates <- swaap::swaap_link.trim_rule(
         'duplicate time points'
       )
 
@@ -1781,7 +1568,7 @@ swaap_link <- function(
     }
 
     dtf_long <- dtf_long |>
-      swaap::swaap_link.helper.trim(
+      swaap::swaap_link.trim(
         fun_rule = fun_trim_duplicates
       )
 
@@ -1899,131 +1686,119 @@ swaap_link <- function(
   return( dtf_long )
 }
 
+#### 3) Input functions ####
 
-#### 3) Helper functions ####
-
-#### 3.1) swaap_link.helper.input ####
-#' Function to Help Create Input for Linking Function
+#### 3.1) swaap_link.input.sets ####
+#' Function to Define Sets of Records to Link
 #'
-#' Helper function to generate input to pass to the [swaap::swaap_link]
-#' function.
+#' Function to generate input to pass to the [swaap::swaap_link]
+#' function. Creates a list of lists with logical vectors
+#' indicating the rows to consider when linking two time points.
+#' Can also be used to check that input is correctly specified.
 #'
 #' @param dtf_long A data frame, assumed to be standard processed
-#'   school-wide assessment data with the columns
-#'   \code{'SSS.INT.TimePoint'} and \code{'SSS.INT.LongitudinalWave'}
-#'   as well as the linking code items.
-#' @param chr_input A character string indicating the type of input to
-#'   create, either \code{'sets'}, \code{'items'}, \code{'combos'},
-#'   or \code{'missing'}.
-#' @param lst_sets An optional argument, include to aid in defining
-#'   items. A list of lists, with each sublist specifying
-#'   \code{'Base'} and \code{'Add'} logical vectors for the pair of data
-#'   subsets in \code{dtf_long} to link over (e.g., \code{'Base'} would
-#'   subset the first time point and \code{'Add'} would subset the second
-#'   time point). Include to aid in defining items, combos, and
-#'   missingness treatment.
-#' @param obj_extra Additional input needed to define combos and
-#'   treatment of missingness. For combos, either a character vector
-#'   or list of the items; for missingness, a list with both the
-#'   items and combos input.
-#' @param lgc_progress A logical value; if\code{TRUE} tracks function
-#'   progress.
+#'   school-wide assessment data. Default methods need the columns
+#'   \code{'SSS.INT.LongitudinalWave'}, \code{'SSS.INT.TimePoint'} and
+#'   \code{'SSS.INT.Grade'}.
+#' @param lst_sets An optional argument, the list of sets. If provided,
+#'   function checks if input is valid.
+#' @param lgc_duplicates A logical value; if \code{TRUE}, produces
+#'   the list of lists with logical vectors for checking for duplicate
+#'   records within a given time point.
+#' @param chr_groups A character vector of three column names for the
+#'   longitudinal wave, time point, and grade level, respectively.
 #'
 #' @author Kevin Potter
 #'
-#' @returns A list structured in the relevant way for the given output.
+#' @returns A list of lists, each sublist consisting of the elements
+#' \code{Base} (a logical vector for rows from the first time point)
+#' and \code{Add} (a logical vector for rows from the second time point),
+#' If \code{lgc_duplicates = TRUE}, both logical vectors are for the
+#' same time point.
 #'
 #' @examples
 #' dtf_long <- swaap_simulate( 'link', 'demo' )
 #'
 #' lst_sets <- dtf_long |>
-#'   swaap_link.helper.input( 'sets' )
-#' lst_items <- dtf_long |>
-#'   swaap_link.helper.input( 'items', lst_sets = lst_sets )
-#' lst_combos <- dtf_long |>
-#'   swaap_link.helper.input( 'combos', obj_extra = lst_items )
-#' lst_missing <- dtf_long |>
-#'   swaap_link.helper.input(
-#'     'missing', obj_extra = list( lst_items, lst_combos )
-#'   )
+#'   swaap_link.input.sets()
 #'
 #' @export
 
-swaap_link.helper.input <- function(
+
+swaap_link.input.sets <- function(
     dtf_long,
-    chr_input,
     lst_sets = NULL,
-    obj_extra = NULL,
-    lgc_progress = FALSE ) {
-
-  if (lgc_progress) 'Start: swaap_link.helper.input'
-
-  #### 3.1.1) Setup ####
-
-  lst_inputs <- list(
-    sets = c(
-      'sets',
-      'lst_sets',
-      'link_over',
-      'link over',
-      'pairs'
-    ),
-    items = c(
-      'items',
-      'lst_items',
-      'linking items',
-      'link items',
-      'linking questions',
-      'link questions',
-      'link_using',
-      'link using'
-    ),
-    combos = c(
-      'combos',
-      'lst_combos',
-      'combo',
-      'item combos',
-      'item combo'
-    ),
-    missing = c(
-      'missing',
-      'lst_missing',
-      'missing items'
-    )
-  )
-
-  #### 3.1.2) Sets ####
+    lgc_duplicates = FALSE,
+    chr_groups = NULL ) {
 
   # Create input
-  if ( chr_input %in% lst_inputs$sets ) {
+  if ( is.null(lst_sets) ) {
 
-    if (lgc_progress) '  Input: Sets'
+    # Check if only SBIRT sample
+    lgc_SBIRT <- FALSE
 
-    # No extra details
-    if ( is.null(obj_extra) ) {
+    # SBIRT variables found
+    if ( 'SSS.LGC.SBIRT' %in% colnames(dtf_long) ) {
 
-      #### 3.1.2.1) Default - SBIRT ####
+      if ( all( dtf_long$SSS.LGC.SBIRT ) ) lgc_SBIRT <- TRUE
 
-      # Check if only SBIRT sample
-      lgc_SBIRT <- FALSE
+      # Close 'SBIRT variables found'
+    }
 
-      # SBIRT variables found
-      if ( 'SSS.LGC.SBIRT' %in% colnames(dtf_long) ) {
+    # Default grouping variables
+    if ( is.null(chr_groups) ) {
 
-        if ( all( dtf_long$SSS.LGC.SBIRT ) ) lgc_SBIRT <- TRUE
+      chr_groups <- c( 'SSS.INT.LongitudinalWave',
+                       'SSS.INT.TimePoint',
+                       'SSS.INT.Grade' )
 
-        # Close 'SBIRT variables found'
+      # Grouping variables for SBIRT
+      if ( lgc_SBIRT ) {
+
+        chr_groups <- c( 'SSS.INT.RecruitmentWave',
+                         'SSS.INT.SBIRTTimePoint',
+                         'SSS.INT.Grade' )
+
+        # Try standard variable names
+        if ( !all( chr_groups %in% colnames(dtf_long) ) ) {
+
+          chr_groups <- c( 'SSS.INT.LongitudinalWave',
+                           'SSS.INT.TimePoint',
+                           'SSS.INT.Grade' )
+
+          # Close 'Try standard variable names'
+        }
+
+        # Close 'Grouping variables for SBIRT'
       }
+
+      # Close 'Default grouping variables'
+    }
+
+    chr_error <- paste0(
+      "Argument 'chr_groups' must be column names for ",
+      "longitudinal wave, time point, and grade level respectively"
+    )
+
+    # Check input
+    if ( length(chr_groups) != 3 )
+      stop( chr_error )
+    if ( !all( chr_groups %in% colnames(dtf_long) ) )
+      stop( chr_error )
+
+    # Group by longitudinal wave, time point, and grade level
+    chr_g <- chr_groups
+
+    # Pairs of time points
+    if ( !lgc_duplicates ) {
+
+      #### 3.1.1) Default - SBIRT ####
 
       # If only SBIRT sample
       if ( lgc_SBIRT ) {
 
-        if (lgc_progress) '    SBIRT'
-
-        # Group by recruitment wave, time point, and grade level
-
         int_WV <-
-          dtf_long$SSS.INT.RecruitmentWave |>
+          dtf_long[[ chr_g[1] ]] |>
           unique() |>
           sort()
 
@@ -2067,13 +1842,13 @@ swaap_link.helper.input <- function(
 
               # Create subsets
               lgc_base <-
-                dtf_long$SSS.INT.RecruitmentWave %in% int_WV[w] &
-                dtf_long$SSS.INT.SBIRTTimePoint %in% mat_TM[p, 1] &
-                dtf_long$SSS.INT.Grade %in% ( mat_GR[p, 1] + g )
+                dtf_long[[ chr_g[1] ]] %in% int_WV[w] &
+                dtf_long[[ chr_g[2] ]] %in% mat_TM[p, 1] &
+                dtf_long[[ chr_g[3] ]] %in% ( mat_GR[p, 1] + g )
               lgc_add <-
-                dtf_long$SSS.INT.RecruitmentWave %in% int_WV[w] &
-                dtf_long$SSS.INT.SBIRTTimePoint %in% mat_TM[p, 2] &
-                dtf_long$SSS.INT.Grade %in% ( mat_GR[p, 2] + g )
+                dtf_long[[ chr_g[1] ]] %in% int_WV[w] &
+                dtf_long[[ chr_g[2] ]] %in% mat_TM[p, 2] &
+                dtf_long[[ chr_g[3] ]] %in% ( mat_GR[p, 2] + g )
 
               # If subsets exist
               if ( any(lgc_base) & any(lgc_add) ) {
@@ -2085,11 +1860,11 @@ swaap_link.helper.input <- function(
                 chr_names[int_inc] <- paste0(
                   'W', int_WV[w],
                   'T', mat_TM[p, 1],
-                  'G', mat_GR[p, 1],
+                  'G', mat_GR[p, 1] + g,
                   't',
                   'W', int_WV[w],
                   'T', mat_TM[p, 2],
-                  'G', mat_GR[p, 2]
+                  'G', mat_GR[p, 2] + g
                 )
 
                 int_inc <- int_inc + 1
@@ -2113,16 +1888,14 @@ swaap_link.helper.input <- function(
         # Close 'If only SBIRT sample'
       }
 
-      #### 3.1.2.2) Default - survey ####
+      #### 3.1.2) Default - survey ####
 
-      if (lgc_progress) '    Survey'
-
-      int_times <-
-        dtf_long$SSS.INT.TimePoint |>
+      int_waves <-
+        dtf_long[[ chr_g[1] ]] |>
         unique() |>
         sort()
-      int_waves <-
-        dtf_long$SSS.INT.LongitudinalWave |>
+      int_times <-
+        dtf_long[[ chr_g[2] ]] |>
         unique() |>
         sort()
 
@@ -2155,11 +1928,11 @@ swaap_link.helper.input <- function(
 
           # Create subsets
           lgc_base <-
-            dtf_long$SSS.INT.TimePoint %in% mat_pairs[p, 1] &
-            dtf_long$SSS.INT.LongitudinalWave %in% int_waves[w]
+            dtf_long[[ chr_g[2] ]] %in% mat_pairs[p, 1] &
+            dtf_long[[ chr_g[1] ]] %in% int_waves[w]
           lgc_add <-
-            dtf_long$SSS.INT.TimePoint %in% mat_pairs[p, 2] &
-            dtf_long$SSS.INT.LongitudinalWave %in% int_waves[w]
+            dtf_long[[ chr_g[2] ]] %in% mat_pairs[p, 2] &
+            dtf_long[[ chr_g[1] ]] %in% int_waves[w]
 
           # Add set
           if ( any(lgc_base) & any(lgc_add) ) {
@@ -2191,146 +1964,82 @@ swaap_link.helper.input <- function(
 
       return( lst_sets )
 
-      # Close 'No extra details'
+      # Close 'Pairs of time points'
     } else {
 
-      # Create sets for checking for duplicates
-      if ( 'duplicates' %in% obj_extra ) {
+      #### 3.1.3) Duplicates - SBIRT ####
 
-        #### 3.1.2.3) Duplicates - SBIRT ####
+      # Check if only SBIRT sample
+      lgc_SBIRT <- FALSE
 
-        # Check if only SBIRT sample
-        lgc_SBIRT <- FALSE
+      # SBIRT variables found
+      if ( 'SSS.LGC.SBIRT' %in% colnames(dtf_long) ) {
 
-        # SBIRT variables found
-        if ( 'SSS.LGC.SBIRT' %in% colnames(dtf_long) ) {
+        if ( all( dtf_long$SSS.LGC.SBIRT ) ) lgc_SBIRT <- TRUE
 
-          if ( all( dtf_long$SSS.LGC.SBIRT ) ) lgc_SBIRT <- TRUE
+        # Close 'SBIRT variables found'
+      }
 
-          # Close 'SBIRT variables found'
-        }
+      # If only SBIRT sample
+      if ( lgc_SBIRT ) {
 
-        # If only SBIRT sample
-        if ( lgc_SBIRT ) {
+        # Group by recruitment wave, time point, and grade level
 
-          if (lgc_progress) '    SBIRT'
-
-          # Group by recruitment wave, time point, and grade level
-
-          int_WV <-
-            dtf_long$SSS.INT.RecruitmentWave |>
-            unique() |>
-            sort()
-
-          mat_sets <- rbind(
-            c( 0, 9 ),
-            c( 1, 9 ),
-            c( 2, 10 ),
-            c( 3, 10 ),
-            c( 4, 11 )
-          )
-
-          lst_sets <- list()
-          chr_names <- c()
-          int_inc <- 1
-
-          # Loop over waves
-          for ( w in seq_along(int_WV) ) {
-
-            # Loop over time points
-            for ( p in 1:nrow(mat_sets) ) {
-
-              # Loop over starting grades
-              for ( g in 0:1 ) {
-
-                # Create subsets
-                lgc_base <-
-                  dtf_long$SSS.INT.RecruitmentWave %in% int_WV[w] &
-                  dtf_long$SSS.INT.SBIRTTimePoint %in% mat_sets[p, 1] &
-                  dtf_long$SSS.INT.Grade %in% ( mat_sets[p, 2] + g )
-                lgc_add <-
-                  dtf_long$SSS.INT.RecruitmentWave %in% int_WV[w] &
-                  dtf_long$SSS.INT.SBIRTTimePoint %in% mat_sets[p, 1] &
-                  dtf_long$SSS.INT.Grade %in% ( mat_sets[p, 2] + g )
-
-                # If subsets exist
-                if ( any(lgc_base) & any(lgc_add) ) {
-
-                  lst_sets[[int_inc]] <- list(
-                    Base = lgc_base,
-                    Add = lgc_add
-                  )
-                  chr_names[int_inc] <- paste0(
-                    'W', int_WV[w],
-                    'T', mat_sets[p, 1],
-                    'G', mat_sets[p, 2]
-                  )
-
-                  int_inc <- int_inc + 1
-
-                  # Close 'If subsets exist'
-                }
-
-                # Close 'Loop over starting grades'
-              }
-
-              # Close 'Loop over time points'
-            }
-
-            # Close 'Loop over waves'
-          }
-
-          names( lst_sets ) <- chr_names
-
-          return( lst_sets )
-
-          # Close 'If only SBIRT sample'
-        }
-
-        #### 3.1.2.4) Duplicates - survey ####
-
-        int_times <-
-          dtf_long$SSS.INT.TimePoint |>
+        int_WV <-
+          dtf_long[[ chr_g[1] ]] |>
           unique() |>
           sort()
-        int_waves <-
-          dtf_long$SSS.INT.LongitudinalWave |>
-          unique() |>
-          sort()
+
+        mat_sets <- rbind(
+          c( 0, 9 ),
+          c( 1, 9 ),
+          c( 2, 10 ),
+          c( 3, 10 ),
+          c( 4, 11 )
+        )
 
         lst_sets <- list()
         chr_names <- c()
         int_inc <- 1
 
         # Loop over waves
-        for ( w in seq_along(int_waves) ) {
+        for ( w in seq_along(int_WV) ) {
 
           # Loop over time points
-          for ( p in seq_along(int_times) ) {
+          for ( p in 1:nrow(mat_sets) ) {
 
-            # Create subsets
-            lgc_base <-
-              dtf_long$SSS.INT.TimePoint %in% int_times[p] &
-              dtf_long$SSS.INT.LongitudinalWave %in% int_waves[w]
-            lgc_add <-
-              dtf_long$SSS.INT.TimePoint %in% int_times[p] &
-              dtf_long$SSS.INT.LongitudinalWave %in% int_waves[w]
+            # Loop over starting grades
+            for ( g in 0:1 ) {
 
-            # Add set
-            if ( any(lgc_base) & any(lgc_add) ) {
+              # Create subsets
+              lgc_base <-
+                dtf_long[[ chr_g[1] ]] %in% int_WV[w] &
+                dtf_long[[ chr_g[2] ]] %in% mat_sets[p, 1] &
+                dtf_long[[ chr_g[3] ]] %in% ( mat_sets[p, 2] + g )
+              lgc_add <-
+                dtf_long[[ chr_g[1] ]] %in% int_WV[w] &
+                dtf_long[[ chr_g[2] ]] %in% mat_sets[p, 1] &
+                dtf_long[[ chr_g[3] ]] %in% ( mat_sets[p, 2] + g )
 
-              lst_sets[[int_inc]] <- list(
-                Base = lgc_base,
-                Add = lgc_add
-              )
-              chr_names[int_inc] <- paste0(
-                'W', int_waves[w],
-                'T', int_times[p]
-              )
+              # If subsets exist
+              if ( any(lgc_base) & any(lgc_add) ) {
 
-              int_inc <- int_inc + 1
+                lst_sets[[int_inc]] <- list(
+                  Base = lgc_base,
+                  Add = lgc_add
+                )
+                chr_names[int_inc] <- paste0(
+                  'W', int_WV[w],
+                  'T', mat_sets[p, 1],
+                  'G', mat_sets[p, 2] + g
+                )
 
-              # Close 'Add set'
+                int_inc <- int_inc + 1
+
+                # Close 'If subsets exist'
+              }
+
+              # Close 'Loop over starting grades'
             }
 
             # Close 'Loop over time points'
@@ -2343,745 +2052,1020 @@ swaap_link.helper.input <- function(
 
         return( lst_sets )
 
-        # Close 'Create sets for checking for duplicates'
+        # Close 'If only SBIRT sample'
       }
 
-      if ( 'code' %in% obj_extra ) {
+      #### 3.1.4) Duplicates - survey ####
 
+      int_waves <-
+        dtf_long[[ chr_g[1] ]] |>
+        unique() |>
+        sort()
+      int_times <-
+        dtf_long[[ chr_g[2] ]] |>
+        unique() |>
+        sort()
+
+      lst_sets <- list()
+      chr_names <- c()
+      int_inc <- 1
+
+      # Loop over waves
+      for ( w in seq_along(int_waves) ) {
+
+        # Loop over time points
+        for ( p in seq_along(int_times) ) {
+
+          # Create subsets
+          lgc_base <-
+            dtf_long[[ chr_g[2] ]] %in% int_times[p] &
+            dtf_long[[ chr_g[1] ]] %in% int_waves[w]
+          lgc_add <-
+            dtf_long[[ chr_g[2] ]] %in% int_times[p] &
+            dtf_long[[ chr_g[1] ]] %in% int_waves[w]
+
+          # Add set
+          if ( any(lgc_base) & any(lgc_add) ) {
+
+            lst_sets[[int_inc]] <- list(
+              Base = lgc_base,
+              Add = lgc_add
+            )
+            chr_names[int_inc] <- paste0(
+              'W', int_waves[w],
+              'T', int_times[p]
+            )
+
+            int_inc <- int_inc + 1
+
+            # Close 'Add set'
+          }
+
+          # Close 'Loop over time points'
+        }
+
+        # Close 'Loop over waves'
       }
 
-      # Close else for 'No extra details'
+      names( lst_sets ) <- chr_names
+
+      # Close else for 'Pairs of time points'
     }
 
     # Close 'Create input'
   }
 
-  #### 3.1.3) Items ####
+  #### 3.1.5) Check input ####
 
-  # Create input
-  if ( chr_input %in% lst_inputs$items ) {
+  chr_error <-
+    paste0(
+      "\nArgument 'lst_sets' must be in format:\n",
+      "list(\n",
+      "  <Set> = list(\n",
+      "    Base = <logical vector>,\n",
+      "    Add = <logical vector>\n",
+      "  ),\n",
+      "  ...\n",
+      ")\n",
+      "\n",
+      "Logical vectors for 'Base' and 'Add' specify ",
+      "subset of rows to consider for the pair of ",
+      "time points to link"
+    )
 
-    if (lgc_progress) '  Input: Items'
+  # Make sure is list of lists
+  if ( !is.list(lst_sets) ) stop(chr_error)
 
-    chr_columns <- colnames(dtf_long)
+  # Check input validity
+  lgc_checks_rows <- rep( FALSE, length(lst_sets) )
 
-    chr_linking <- NULL
+  # Loop over sets
+  for ( s in seq_along(lst_sets) ) {
 
-    chr_linking_clean <-
-      swaap::swaap_select.linking()
-    chr_linking_orig <-
-      swaap::swaap_select.linking( lgc_original = TRUE )
-    chr_linking_fast <-
-      swaap::swaap_select.linking( lgc_fastLink = TRUE )
+    # Sublist not a list
+    if ( !is.list(lst_sets[[s]] ) ) stop(chr_error)
 
-    # Extra input
-    if ( !is.null( obj_extra ) ) {
+    # Sublist has wrong names
+    if ( !all( c( 'Base', 'Add' ) %in% names( lst_sets[[s]] ) ) )
+      stop(chr_error)
 
-      # Check for fastLink
-      if ( obj_extra %in% 'fastLink' ) {
+    lgc_checks_rows[s] <-
+      is.logical( lst_sets[[s]]$Base ) &
+      is.logical( lst_sets[[s]]$Add )
 
-        chr_linking <- chr_linking_fast
+    lgc_checks_rows[s] <-
+      length( lst_sets[[s]]$Base ) == nrow(dtf_long) &
+      length( lst_sets[[s]]$Add ) == nrow(dtf_long)
 
-        # Close 'Check for fastLink'
-      }
+    # Close 'Loop over sets'
+  }
 
-      # Close 'Extra input'
-    }
+  if ( !all(lgc_checks_rows) )
+    stop( 'Check that logical vectors for sets are for current data' )
 
-    # No items defined
-    if ( is.null( chr_linking ) ) {
+  return( lst_sets )
+}
 
-      lgc_clean <- any(
-        chr_linking_clean[
-          !chr_linking_clean %in% chr_linking_orig
-        ] %in% chr_columns
-      )
+#### 3.2) swaap_link.input.items ####
+#' Function to Define Items to Link Over
+#'
+#' Function to generate input to pass to the [swaap::swaap_link]
+#' function. Creates a list of the column names for the
+#' items to link over per each pair of time points.
+#'
+#' @param dtf_long A data frame, assumed to be standard processed
+#'   school-wide assessment data. If column \code{'SSS.INT.Grade'}
+#'   is present function will try to check for instances in which
+#'   school code does not apply (i.e., transition from middle to
+#'   high school).
+#' @param lst_sets A list of lists, each sublist consisting of the
+#'   elements \code{Base} (a logical vector for rows from the first
+#'   time point) and \code{Add} (a logical vector for rows from the
+#'   second time point). See output from [swaap::swaap_link.input.sets].
+#' @param obj_items An optional argument, either a character vector
+#'   of column names or a list of character vectors. If a character
+#'   vector, function converts into a list using \code{lst_sets}.
+#'   If a list, function checks if input is valid.
+#' @param lgc_fastLink A logical value; if \code{TRUE}, will
+#'   return linking items intended for use with the
+#'   [fastLink::fastLink] function when generating input.
+#' @param lgc_district A logical value; if \code{TRUE} uses
+#'   district codes instead of school codes when generating input.
+#'
+#' @returns A list of character vectors, the column names for the
+#' items to link over per each pair of time points.
+#'
+#' @examples
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
+#'
+#' lst_sets <- dtf_long |>
+#'   swaap_link.input.sets()
+#' lst_items <- dtf_long |>
+#'   swaap_link.input.items( lst_sets )
+#'
+#' @export
 
-      # If any linking items exist [Clean]
-      if ( lgc_clean ) {
+swaap_link.input.items <- function(
+    dtf_long,
+    lst_sets,
+    obj_items = NULL,
+    lgc_fastLink = FALSE,
+    lgc_district = FALSE ) {
 
-        chr_linking <- chr_linking_clean[
-          chr_linking_clean %in% chr_columns
-        ]
+  # No items provided
+  if ( is.null(obj_items) ) {
 
-        # Close 'If any linking items exist [Clean]'
-      }
+    # Exact matching
+    if ( !lgc_fastLink ) {
 
-      lgc_orig <- any(
-        chr_linking_orig %in% chr_columns
-      )
-
-      # If any linking items exist [Original]
-      if ( !lgc_clean & lgc_orig ) {
-
-        chr_linking <- chr_linking_orig[
-          chr_linking_orig %in% chr_columns
-        ]
-
-        # Close 'If any linking items exist [Original]'
-      }
-
-      # Close 'No items defined'
-    }
-
-    # No items found
-    if ( is.null(chr_linking) ) {
-
-      stop( 'No standard linking items found in data' )
-
-      # Close 'No items found'
-    }
-
-    # If sets provided
-    if ( !is.null(lst_sets) ) {
-
-      lst_items <- lapply(
-        seq_along(lst_sets), function(s) {
-          return(
-            chr_linking
-          )
-        }
-      )
-      names( lst_items ) <- names( lst_sets )
-
-      # Loop through sets
-      for ( s in seq_along(lst_sets) ) {
-
-        lgc_base <-
-          lst_sets[[s]]$Base
-        lgc_add <-
-          lst_sets[[s]]$Add
-
-        lgc_base_NA <- apply(
-          dtf_long[lgc_base, lst_items[[s]]],
-          2, function(x) all( is.na(x) )
+      # Default items for linking
+      lst_defaults <- list(
+        standard = swaap::swaap_select.linking(
+          lgc_district = lgc_district
+        ),
+        original = swaap::swaap_select.linking(
+          lgc_district = lgc_district,
+          lgc_original = TRUE
         )
-        lgc_add_NA <- apply(
-          dtf_long[lgc_add, lst_items[[s]]],
-          2, function(x) all( is.na(x) )
-        )
+      )
 
-        # If any variables are NA for all cases
-        if ( any(lgc_base_NA) | any(lgc_add_NA) ) {
-
-          # Keep items with non-NA cases
-          lst_items[[s]] <- lst_items[[s]][
-            !lgc_base_NA & !lgc_add_NA
-          ]
-
-          # Close 'If any variables are NA for all cases'
-        }
-
-        # Close 'Loop through sets'
-      }
-
-      # Close 'If sets provided'
+      # Close 'Exact matching'
     } else {
 
-      return( chr_linking )
-
-      # Close else for 'If sets provided'
-    }
-
-    return( lst_items )
-
-    # Close 'Create input'
-  }
-
-  #### 3.1.4) Combos ####
-
-  # Create input
-  if ( chr_input %in% lst_inputs$combos ) {
-
-    if (lgc_progress) '  Input: Combos'
-
-    #### 3.1.4.1) fun_combos ####
-    fun_combos <- function(
-      chr_items ) {
-
-      lst_combos <- list()
-
-      # Standard linking items
-      chr_linking_items <-
-        swaap::swaap_select.linking()
-      # Standard linking items [Original]
-      chr_linking_items_orig <-
-        swaap::swaap_select.linking( lgc_original = TRUE )
-
-      chr_diff <-
-        chr_linking_items[
-          !chr_linking_items %in% chr_linking_items_orig
-        ]
-
-      if ( !any(chr_diff %in% chr_items) )
-        chr_linking_items <- chr_linking_items_orig
-
-      chr_SI <- chr_linking_items[1:2]
-      chr_S <- chr_linking_items[1]
-      chr_I <- chr_linking_items[2]
-      chr_LQ <- chr_linking_items[-(1:2)]
-
-      # If school code provided
-      if ( chr_S %in% chr_items ) {
-
-        # Add school code + ID
-        if ( all( chr_SI %in% chr_items ) ) {
-
-          lst_combos$SI <- which(
-            chr_items %in% chr_SI
-          )
-
-          # Close 'Add school code + ID'
-        }
-
-        # Add school code + LQ
-        if ( all( chr_LQ %in% chr_items ) ) {
-
-          int_patterns <- 1:7
-
-          lst_combos[[
-            paste0( 'SQ', paste( int_patterns, collapse = '' ) )
-          ]] <- which(
-            chr_items %in% c( chr_S, chr_LQ )
-          )
-
-          # Loop over individual items
-          for ( i in seq_along(chr_LQ) ) {
-
-            chr_cur <- chr_LQ[-i]
-            chr_slot <- paste0(
-              'SQ',
-              paste(
-                which(
-                  chr_items[
-                    chr_items %in% chr_LQ
-                  ] %in% chr_cur
-                ),
-                collapse = ''
-              )
-            )
-
-            lst_combos[[ chr_slot ]] <- which(
-              chr_items %in% c( chr_S, chr_cur )
-            )
-
-            # Close 'Loop over individual items'
-          }
-
-          # Close 'Add school code + LQ'
-        }
-
-        # If fewer than 7 linking questions
-        if ( sum(chr_LQ %in% chr_items) %in% 1:6 ) {
-
-          chr_slot <- paste0(
-            'SQ',
-            paste(
-              which(
-                chr_items[
-                  chr_items %in% chr_LQ
-                ] %in% chr_LQ
-              ),
-              collapse = ''
-            )
-          )
-
-          lst_combos[[ chr_slot ]] <- which(
-            chr_items %in% c( chr_S, chr_LQ )
-          )
-
-          # Close 'If fewer than 7 linking questions'
-        }
-
-        # Close 'If school code provided'
-      } else {
-
-        # Add school ID
-        if ( chr_I %in% chr_items ) {
-
-          lst_combos$I <- which(
-            chr_items %in% chr_I
-          )
-
-          # Close 'Add school ID'
-        }
-
-        # Add LQ
-        if ( all( chr_LQ %in% chr_items ) ) {
-
-          int_patterns <- 1:7
-
-          lst_combos[[
-            paste0( 'Q', paste( int_patterns, collapse = '' ) )
-          ]] <- which(
-            chr_items %in% chr_LQ
-          )
-
-          # Loop over individual items
-          for ( i in seq_along(chr_LQ) ) {
-
-            chr_cur <- chr_LQ[-i]
-            chr_slot <- paste0(
-              'Q',
-              paste(
-                which(
-                  chr_items[
-                    chr_items %in% chr_LQ
-                  ] %in% chr_cur
-                ),
-                collapse = ''
-              )
-            )
-
-            lst_combos[[ chr_slot ]] <- which(
-              chr_items %in% chr_cur
-            )
-
-            # Close 'Loop over individual items'
-          }
-
-          # Close 'Add school code + LQ'
-        }
-
-        # If fewer than 7 linking questions
-        if ( sum(chr_LQ %in% chr_items) %in% 1:6 ) {
-
-          chr_slot <- paste0(
-            'Q',
-            paste(
-              which(
-                chr_items[
-                  chr_items %in% chr_LQ
-                ] %in% chr_LQ
-              ),
-              collapse = ''
-            )
-          )
-
-          lst_combos[[ chr_slot ]] <- which(
-            chr_items %in% chr_LQ
-          )
-
-          # Close 'If fewer than 7 linking questions'
-        }
-
-        # Close else for 'If school code provided'
-      }
-
-      # If no known matches
-      if ( length(lst_combos) == 0 )
-        lst_combos$All <- seq_along(chr_items)
-
-      return( lst_combos )
-    }
-
-    # Must provided items
-    if ( is.null(obj_extra) )
-      stop( "Provide column names for linking items via 'obj_extra'" )
-
-    # If character vector
-    if ( is.character(obj_extra) ) {
-
-      lst_combos <- fun_combos(
-        obj_extra
+      # Default items for linking
+      lst_defaults <- list(
+        standard = swaap::swaap_select.linking(
+          lgc_district = lgc_district,
+          lgc_fastLink = TRUE
+        ),
+        original = swaap::swaap_select.linking(
+          lgc_district = lgc_district,
+          lgc_original = TRUE, lgc_fastLink = TRUE
+        )
       )
 
-      # Expand by sets
-      if ( !is.null(lst_sets) ) {
-
-        lst_combos <- lapply(
-          seq_along(lst_sets), function(s) {
-            return( lst_combos )
-          }
-        )
-        names(lst_combos) <- names(lst_sets)
-
-        # Close 'Expand by sets'
-      }
-
-      return( lst_combos )
-
-      # Close 'If character vector'
+      # Close else for 'Exact matching'
     }
 
-    # If list
-    if ( is.list(obj_extra) ) {
+    # Standard items found
+    if ( all( lst_defaults$standard %in% colnames(dtf_long) ) ) {
 
-      # Additional slot indicating fastLink
-      if ( !is.null(obj_extra$fastLink ) ) {
+      obj_items <- lst_defaults$standard
 
-        # Remove slot
-        obj_extra$fastLink <- NULL
+      # Close 'Standard items found'
+    } else {
 
-        # Loop over remaining slots
-        for ( s in seq_along(obj_extra) ) {
+      if ( all( lst_defaults$original %in% colnames(dtf_long) ) )
+        obj_items <- lst_defaults$original
 
-          chr_items <- obj_extra[[s]]
+      # Close else for 'Standard items found'
+    }
 
-          # Initial setup
-          if ( s == 1 ) {
+    if ( is.null( obj_items ) )
+      stop( "No standard linking items found in data set" )
 
-            lst_combos <- list(
-              stringdist = seq_along( chr_items )
-            )
+    # Close 'No items provided'
+  }
 
-            # Expand by sets
-            if ( !is.null(lst_sets) ) {
+  # Convert to list
+  if ( is.character(obj_items) ) {
 
-              lst_combos <- lapply(
-                seq_along(lst_sets), function(l) {
-                  list(
-                    stringdist = seq_along( chr_items )
-                  )
-                }
-              )
-              names(lst_combos) <- names(lst_sets)
+    obj_items <- lapply(
+      seq_along(lst_sets), function(s) {
 
-              # Close 'Expand by sets'
-            } else {
+        return( obj_items )
 
-              # If multiple sets
-              if ( length( obj_extra ) > 1 ) {
+      }
+    )
+    names( obj_items ) <- names( lst_sets )
 
-                lst_combos <- lapply(
-                  seq_along(obj_extra), function(l) {
-                    list(
-                      stringdist = seq_along( chr_items )
-                    )
-                  }
-                )
-                names(lst_combos) <- names(obj_extra)
+    # Close 'Convert to list'
+  }
 
-                # Close 'If multiple sets'
-              }
+  chr_error <- paste0(
+    "Argument 'obj_items' must be a list of character vectors ",
+    "indicating the column names for variables to link over per ",
+    "each pair of time points; Element names must match element ",
+    "names for the list 'lst_sets' as well"
+  )
 
-              # Close else for 'Expand by sets'
-            }
+  # Check input
+  if ( !is.list(obj_items) )
+    stop( chr_error )
 
-            # Close 'Initial setup'
-          }
+  if ( length(obj_items) != length(lst_sets) )
+    stop( chr_error )
 
-          chr_items.fastLink <- c(
-            'SSS.INT.DistrictCode',
-            swaap::swaap_select.linking( lgc_fastLink = TRUE )
-          )
+  if ( !all( names(obj_items) == names(lst_sets) ) )
+    stop( chr_error )
 
-          # Using items prepped for fastLink
-          if ( all( chr_items %in% chr_items.fastLink ) ) {
+  lgc_check_grade <- 'SSS.INT.Grade' %in% colnames(dtf_long)
 
-            lst_combos[[s]] <- list(
-              stringdist = which(
-                grepl( '.CHR.', chr_items, fixed = TRUE )
-              ),
-              numeric = which(
-                !grepl( '.CHR.', chr_items, fixed = TRUE )
-              )
-            )
+  # Loop through sets
+  for ( s in seq_along(lst_sets) ) {
 
-            # chr_partial <- c(
-            #   'SBJ.CHR.Link.FL.StreetName'
-            # )
-            #
-            # # Partial matching
-            # if ( any(chr_partial %in% chr_items) ) {
-            #
-            #   lst_combos[[s]]$partial <- which(
-            #     chr_items %in% chr_partial
-            #   )
-            #
-            #   # Close 'Partial matching'
-            # }
+    lgc_base <-
+      lst_sets[[s]]$Base
+    lgc_add <-
+      lst_sets[[s]]$Add
 
-            # Close 'Using items prepped for fastLink'
-          }
+    lgc_base_NA <- apply(
+      dtf_long[lgc_base, obj_items[[s]]],
+      2, function(x) all( is.na(x) )
+    )
+    lgc_add_NA <- apply(
+      dtf_long[lgc_add, obj_items[[s]]],
+      2, function(x) all( is.na(x) )
+    )
 
-          chr_items.contact <- c(
-            'SBJ.INT.Link.SchoolCode',
-            swaap::swaap_select.contact()
-          )
+    # If any variables are NA for all cases
+    if ( any(lgc_base_NA) | any(lgc_add_NA) ) {
 
-          # Using contact info items
-          if ( all( chr_items %in% chr_items.contact) ) {
+      chr_remove <- obj_items[[s]][
+        lgc_base_NA | lgc_add_NA
+      ]
 
-            lst_combos[[s]] <- list()
+      # Keep items with non-NA cases
+      obj_items[[s]] <- obj_items[[s]][
+        !lgc_base_NA & !lgc_add_NA
+      ]
 
-            chr_stringdist <- c(
-              'SBJ.CHR.Contact.Name',
-              'SBJ.CHR.Contact.Email',
-              'SBJ.CHR.Contact.DateOfBirth'
-            )
+      chr_warning <- paste0(
+        "For set ", names(lst_sets)[s], " removed ",
+        "following item(s) due to NA values: ",
+        paste( chr_remove, collapse = ", " )
+      )
 
-            # Items matched on string distance
-            if ( any( chr_stringdist %in% chr_items ) ) {
+      warning( chr_warning )
 
-              lst_combos[[s]]$stringdist <- which(
-                chr_items %in% chr_stringdist
-              )
+      # Close 'If any variables are NA for all cases'
+    }
 
-              # Close 'Items matched on string distance'
-            }
+    # If variable is constant for fastLink
+    if ( lgc_fastLink ) {
 
-            chr_numeric <- c(
-              'SBJ.INT.Link.SchoolCode',
-              'SBJ.CHR.Contact.Cellphone'
-            )
+      lgc_base_constant <- apply(
+        dtf_long[lgc_base, obj_items[[s]]],
+        2, function(x) dplyr::n_distinct(x) == 1
+      )
+      lgc_add_constant <- apply(
+        dtf_long[lgc_add, obj_items[[s]]],
+        2, function(x) dplyr::n_distinct(x) == 1
+      )
 
-            # Items matched on numeric distance
-            if ( any( chr_numeric %in% chr_items ) ) {
+      # If any variables are constant
+      if ( any(lgc_base_constant) | any(lgc_add_constant) ) {
 
-              lst_combos[[s]]$numeric <- which(
-                chr_items %in% chr_numeric
-              )
+        chr_remove <- obj_items[[s]][
+          lgc_base_constant | lgc_base_constant
+        ]
 
-              # Close 'Items matched on numeric distance'
-            }
+        # Keep items with non-NA cases
+        obj_items[[s]] <- obj_items[[s]][
+          !lgc_base_constant & !lgc_base_constant
+        ]
 
-            chr_partial <- c(
-              'SBJ.CHR.Contact.Name'
-            )
+        chr_warning <- paste0(
+          "For set ", names(lst_sets)[s], " removed ",
+          "following item(s) due to being constant: ",
+          paste( chr_remove, collapse = ", " )
+        )
 
-            # Items acceptable for partial matching
-            if ( any( chr_partial %in% chr_items ) ) {
+        warning( chr_warning )
 
-              lst_combos[[s]]$partial <- which(
-                chr_items %in% chr_partial
-              )
-
-              # Close 'Items acceptable for partial matching'
-            }
-
-            # Close 'Using contact info items'
-          }
-
-          # Close 'Loop over remaining slots'
-        }
-
-        return(lst_combos)
-
-        # Close 'Additional slot indicating fastLink'
+        # Close 'If any variables are constant'
       }
 
+      # Close 'If variable is constant for fastLink'
+    }
+
+    # Close 'Loop through sets'
+  }
+
+  return( obj_items )
+}
+
+#### 3.3) swaap_link.input.combos ####
+#' Function to Define Combinations of Items to Link Over
+#'
+#' Function to generate input to pass to the [swaap::swaap_link]
+#' function. Creates a list of lists, either the integer indices
+#' for the combinations of linking items to consider for
+#' exact matching approaches, or the integer indices for the
+#' items to pass to pass to the \code{stringdist}, \code{numeric},
+#' and \code{partial} arguments of the function [fastLink::fastLink].
+#'
+#' @param dtf_long A data frame, assumed to be standard processed
+#'   school-wide assessment data.
+#' @param lst_items A list of of character vectors, the columns to
+#'   use as linking items for each set (the pair of time points to link).
+#'   See output from [swaap::swaap_link.input.items].
+#' @param lst_combos An optional argument. For exact matching methods,
+#'   should be a list of lists, each sublist consisting of integer
+#'   indices indicating the combination of linking items to use.
+#'   For the [fastLink::fastLink] function, a list of lists, each
+#'   sublist specifying integer indices indicating which items to
+#'   pass to the \code{stringdist}, \code{numeric},
+#'   and \code{partial} arguments of the function [fastLink::fastLink].
+#'   If provided, function checks if input is valid.
+#' @param lgc_fastLink A logical value; if \code{TRUE} specifies
+#'   which items to pass to the \code{stringdist}, \code{numeric},
+#'   and \code{partial} arguments of the function [fastLink::fastLink]
+#'   when generating input.
+#'
+#' @returns A list of lists. For exact matching methods, each sublist
+#' consists of integer indices indicating the combination of linking
+#' items to use. For the [fastLink::fastLink] function, each sublist
+#' specifies the integer indices to pass to the \code{stringdist},
+#' \code{numeric}, and \code{partial} arguments.
+#'
+#' @examples
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
+#'
+#' lst_sets <- dtf_long |>
+#'   swaap_link.input.sets()
+#' lst_items <- dtf_long |>
+#'   swaap_link.input.items( lst_sets )
+#' lst_combos <- dtf_long |>
+#'   swaap_link.input.combos( lst_items )
+#'
+#' @export
+
+swaap_link.input.combos <- function(
+    dtf_long,
+    lst_items,
+    lst_combos = NULL,
+    lgc_fastLink = FALSE ) {
+
+  # Exact matching
+  if ( !lgc_fastLink ) {
+
+    #### 3.3.1) Exact matching ####
+
+    # No input
+    if ( is.null(lst_combos) ) {
+
+      # Initialize list
       lst_combos <- lapply(
-        seq_along(obj_extra), function(s) {
-          fun_combos(obj_extra[[s]])
+        seq_along(lst_items), function(s) {
+          list()
         }
       )
-      names(lst_combos) <- names(obj_extra)
+      names(lst_combos) <- names(lst_items)
 
-      return( lst_combos )
-
-      # Close 'If list'
-    }
-
-    stop(
-      "Argument 'obj_extra' must be a character vector or list"
-    )
-
-    # Close 'Create input'
-  }
-
-  #### 3.1.5) Missing ####
-
-  # Create input
-  if ( chr_input %in% lst_inputs$missing ) {
-
-    if (lgc_progress) '  Input: Missing'
-
-    #### 3.1.5.1) fun_missing ####
-    fun_missing <- function(
-      chr_items,
-      lst_combos ) {
-
-      # Initialize output
-      lst_missing <- lst_combos
-
-      # Standard linking items
-      chr_linking_items <-
-        swaap::swaap_select.linking()
-      # Standard linking items [Original]
-      chr_linking_items_orig <-
-        swaap::swaap_select.linking( lgc_original = TRUE )
-
-      chr_diff <-
-        chr_linking_items[
-          !chr_linking_items %in% chr_linking_items_orig
-        ]
-
-      if ( !any(chr_diff %in% chr_items) )
-        chr_linking_items <- chr_linking_items_orig
-
-      chr_SI <- chr_linking_items[1:2]
-      chr_S <- chr_linking_items[1]
-      chr_I <- chr_linking_items[2]
-      chr_LQ <- chr_linking_items[-(1:2)]
-
-      # Loop over combos
-      for ( l in seq_along(lst_combos) ) {
-
-        # Current items
-        chr_cur <- chr_items[ lst_combos[[l]] ]
-
-        # Default is to check if all items missing
-        lst_missing[[l]] <- seq_along(chr_items)
-
-        # Check against known combos
-
-        # If school code provided
-        if ( chr_S %in% chr_items ) {
-
-          # School code + ID
-          if ( all( chr_SI %in% chr_items ) ) {
-
-            # Match to combo
-            if ( all( chr_cur %in% chr_SI ) ) {
-
-              lst_missing[[l]] <- which(
-                chr_items %in% chr_SI
-              )
-
-              # Close 'Match to combo'
-            }
-
-            # Close 'School code + ID'
-          }
-
-          # If linking questions provided
-          if ( all(chr_LQ %in% chr_items) ) {
-
-            # If at least 6 linking questions
-            if ( sum( chr_cur %in% chr_LQ ) > 5 ) {
-
-              # Use school code, ID, and all linking questions
-              lst_missing[[l]] <- which(
-                chr_items %in% c( chr_SI, chr_LQ )
-              )
-
-              # Close 'If at least 6 linking questions'
-            }
-
-            # Close 'If linking questions provided'
-          }
-
-          # Close 'If school code provided'
-        } else {
-
-          # School ID
-          if ( chr_I %in% chr_items ) {
-
-            # Match to combo
-            if ( all( chr_cur %in% chr_I ) ) {
-
-              lst_missing[[l]] <- which(
-                chr_items %in% chr_I
-              )
-
-              # Close 'Match to combo'
-            }
-
-            # Close 'School ID'
-          }
-
-          # If linking questions provided
-          if ( all(chr_LQ %in% chr_items) ) {
-
-            # If at least 6 linking questions
-            if ( sum( chr_cur %in% chr_LQ ) > 5 ) {
-
-              # Use school ID and all linking questions
-              lst_missing[[l]] <- which(
-                chr_items %in% c( chr_I, chr_LQ )
-              )
-
-              # Close 'If at least 6 linking questions'
-            }
-
-            # Close 'If linking questions provided'
-          }
-
-          # Close 'If school code provided'
-        }
-
-        # Close 'Loop over combos'
-      }
-
-      return( lst_missing )
-    }
-
-    chr_error <- paste0(
-      "Provide list with [[1]] linking items and [[2]] ",
-      "list of combinations"
-    )
-
-    # Must provided extra details
-    if ( is.null(obj_extra) )
-      stop( chr_error )
-
-    if ( !is.list(obj_extra) )
-      stop( chr_error )
-
-    if ( length(obj_extra) != 2 )
-      stop( chr_error )
-
-    # If character vector
-    if ( is.character(obj_extra[[1]]) ) {
-
-      lgc_indices <- all(
-        unique( obj_extra[[2]] |> unlist() ) %in% seq_along( obj_extra[[1]] )
+      # Known defaults
+      lst_defaults <- list(
+        school = list(
+          standard = swaap::swaap_select.linking(),
+          original = swaap::swaap_select.linking( lgc_original = TRUE )
+        ),
+        district = list(
+          standard = swaap::swaap_select.linking( lgc_district = TRUE ),
+          original = swaap::swaap_select.linking(
+            lgc_original = TRUE, lgc_district = TRUE
+          )
+        )
       )
-      if ( !lgc_indices )
-        stop( "Second element of 'obj_extra' should be list of combinations" )
-
-      lst_missing <- fun_missing(
-        obj_extra[[1]],
-        obj_extra[[2]]
-      )
-
-      # Close 'If character vector'
-    } else {
-
-      lst_missing <- obj_extra[[1]]
 
       # Loop over sets
-      for ( s in seq_along(obj_extra[[1]]) ) {
+      for ( s in seq_along(lst_items) ) {
 
-        lst_1 <- obj_extra[[1]][[s]]
-        lst_2 <- obj_extra[[2]][[s]]
+        chr_items <- lst_items[[s]]
 
-        lgc_indices <- all(
-          unique( lst_2 |> unlist() ) %in% seq_along( lst_1 )
-        )
-        if ( !lgc_indices )
-          stop( "Second element of 'obj_extra' should be list of combinations" )
+        lgc_CD <-
+          lst_defaults$school$standard[1] %in% chr_items |
+          lst_defaults$school$original[1] %in% chr_items |
+          lst_defaults$district$standard[1] %in% chr_items |
+          lst_defaults$district$original[1] %in% chr_items
+        lgc_SI <-
+          lst_defaults$school$standard[2] %in% chr_items |
+          lst_defaults$school$original[2] %in% chr_items
+        lgc_LQ <-
+          any( lst_defaults$school$standard[-(1:2)] %in% chr_items ) |
+          any( lst_defaults$school$original[-(1:2)] %in% chr_items )
 
-        lst_missing[[s]] <- fun_missing(
-          lst_1,
-          lst_2
-        )
+        # School ID provided
+        if ( lgc_SI ) {
+
+          int_slot <- length( lst_combos[[s]] ) + 1
+
+          lst_combos[[s]][[ int_slot ]] <- which(
+            chr_items %in% lst_defaults$school$standard[2] |
+            chr_items %in% lst_defaults$school$original[2]
+          )
+
+          # Add in school code
+          if ( lgc_CD ) {
+
+            lst_combos[[s]][[ int_slot ]] <- c(
+              which(
+                chr_items %in% lst_defaults$school$standard[1] |
+                chr_items %in% lst_defaults$school$original[1] |
+                chr_items %in% lst_defaults$district$standard[1] |
+                chr_items %in% lst_defaults$district$original[1]
+              ),
+              lst_combos[[s]][[ int_slot ]]
+            )
+
+            # Close 'Add in school code'
+          }
+
+          # Close 'School ID provided'
+        }
+
+        # Linking questions
+        if ( lgc_LQ ) {
+
+          mat_LQ <- cbind(
+            lst_defaults$school$standard[-(1:2)],
+            lst_defaults$school$original[-(1:2)]
+          )
+
+          int_items <- sapply(
+            1:nrow(mat_LQ), function(r) {
+
+              int_out <- NA
+
+              # Item found
+              if ( any( mat_LQ[r, ] %in% chr_items ) ) {
+
+                int_out <- which( chr_items %in% mat_LQ[r, ] )
+
+                # Close 'Item found'
+              }
+
+              return( int_out )
+            }
+          )
+          names(int_items) <- NULL
+
+          # Increment slot
+          int_slot <- length( lst_combos[[s]] ) + 1
+
+          lst_combos[[s]][[ int_slot ]] <- int_items
+
+          # Add in school code
+          if ( lgc_CD ) {
+
+            lst_combos[[s]][[ int_slot ]] <- c(
+              which(
+                chr_items %in% lst_defaults$school$standard[1] |
+                chr_items %in% lst_defaults$school$original[1] |
+                chr_items %in% lst_defaults$district$standard[1] |
+                chr_items %in% lst_defaults$district$original[1]
+              ),
+              lst_combos[[s]][[ int_slot ]]
+            )
+
+            # Close 'Add in school code'
+          }
+
+          lgc_I5 <-
+            sum( chr_items %in% mat_LQ[, 1] ) > 5 |
+            sum( chr_items %in% mat_LQ[, 2] ) > 5
+
+          # If number of items is 5 or more
+          if ( lgc_I5 ) {
+
+            # Loop over items
+            for ( i in seq_along(int_items) ) {
+
+              # Increment slot
+              int_slot <- length( lst_combos[[s]] ) + 1
+
+              lst_combos[[s]][[ int_slot ]] <- int_items[-i]
+
+              # Add in school code
+              if ( lgc_CD ) {
+
+                lst_combos[[s]][[ int_slot ]] <- c(
+                  which(
+                    chr_items %in% lst_defaults$school$standard[1] |
+                    chr_items %in% lst_defaults$school$original[1] |
+                    chr_items %in% lst_defaults$district$standard[1] |
+                    chr_items %in% lst_defaults$district$original[1]
+                  ),
+                  lst_combos[[s]][[ int_slot ]]
+                )
+
+                # Close 'Add in school code'
+              }
+
+              # Close 'Loop over items'
+            }
+
+            # Close 'If number of items is 5 or more'
+          }
+
+          # Close 'Linking questions'
+        } else {
+
+          # If no combos added
+          if ( length(lst_combos[[s]]) == 0 )
+            lst_combos[[s]][[1]] <- seq_along(chr_items)
+
+          int_items <- unique( unlist( lst_combos[[s]] ) )
+          # If more items then current combos
+          if ( length(chr_items[int_items]) < length(chr_items) ) {
+
+            int_slot <- length( lst_combos[[s]] ) + 1
+
+            lst_combos[[s]][[ int_slot ]] <- which(
+              !chr_items %in% chr_items[int_items]
+            )
+
+            # Close 'If more items then current combos'
+          }
+
+          # Close else for 'Linking questions'
+        }
+
+        names( lst_combos[[s]] ) <-
+          paste0( 'C', seq_along(lst_combos[[s]] ) )
 
         # Close 'Loop over sets'
       }
 
-      # Close else for 'If character vector'
+      # Close 'No input'
     }
 
-    return( lst_missing )
+    # Check values
 
-    # Close 'Create input'
+    chr_error <-
+      paste0(
+        "\nArgument 'lst_combos' must be a list of ",
+        "lists (one sublist for each set) consisting of ",
+        "integer vectors indicating combinations of ",
+        "linking items to match over, in the format:\n",
+        "list(\n",
+        "  <Set> = list(\n",
+        "    <Combo> = <item indices>,\n",
+        "    ...\n",
+        "  ),\n",
+        "  ...\n",
+        ")\n",
+        "\n",
+        "The order of combinations can be used to indicate ",
+        "which combos of linking items to prioritize when ",
+        "matching\n",
+        "\n",
+        "Number of elements in 'lst_combos' must match number ",
+        "of elements in 'lst_items' and have the same name"
+      )
+
+    if ( is.null(lst_combos) )
+      stop( chr_error )
+
+    if ( !is.list(lst_combos) )
+      stop( chr_error )
+
+    if ( length(lst_combos) != length(lst_items) )
+      stop( chr_error )
+
+    if ( !all( names(lst_combos) == names(lst_items) ) )
+      stop( chr_error )
+
+    # Loop over sets
+    for ( s in seq_along(lst_combos) ) {
+
+      lgc_indices_match <-
+        all( unique( unlist( lst_combos ) ) %in% seq_along(lst_items[[s]] ) )
+
+      # Confirm that indices correspond to items
+      if ( !lgc_indices_match )
+        stop( chr_error )
+
+      # Close 'Loop over sets'
+    }
+
+    return( lst_combos )
+
+    # Close 'Exact matching'
+  } else {
+
+    #### 3.3.2) fastLink ####
+
+    # No input
+    if ( is.null(lst_combos) ) {
+
+      # Initialize slots
+      lst_combos <- lapply(
+        seq_along(lst_items), function(s) {
+          list()
+        }
+      )
+      names(lst_combos) <- names( lst_items )
+
+      # Standard linking items
+      chr_linking <- c(
+        swaap::swaap_select.linking( lgc_district = TRUE )[1],
+        swaap::swaap_select.linking( lgc_fastLink = TRUE )
+      )
+      # Standard contact info items
+      chr_contact <- c(
+        swaap::swaap_select.linking( lgc_district = TRUE )[1],
+        swaap::swaap_select.linking()[1],
+        swaap::swaap_select.contact()[1:4]
+      )
+
+      # Loop over slots
+      for ( s in seq_along(lst_items) ) {
+
+        chr_items <- lst_items[[s]]
+
+        lgc_linking <- all( chr_items %in% chr_linking )
+
+        # Standard linking items
+        if ( lgc_linking ) {
+
+          chr_data_type <- sapply(
+            chr_items, function(i) {
+              substr( i, start = 5, stop = 7 )
+            }
+          )
+          lgc_not_char <- !chr_data_type %in% 'CHR'
+
+          # Any numeric items
+          if ( any(lgc_not_char) ) {
+
+            lst_combos[[s]] <- list(
+              stringdist = which(!lgc_not_char),
+              numeric = which(lgc_not_char)
+            )
+
+            # Close 'Any numeric items'
+          } else {
+
+            lst_combos[[s]] <- list(
+              stringdist = seq_along(chr_items)
+            )
+
+            # Close else for 'Any numeric items'
+          }
+
+          # Close 'Standard linking items'
+        }
+
+        lgc_contact <- all( chr_items %in% chr_contact )
+
+        # Standard contact info items
+        if ( lgc_contact ) {
+
+          lst_combos[[s]] <- list()
+
+          chr_stringdist <- c(
+            'SBJ.CHR.Contact.Name',
+            'SBJ.CHR.Contact.Email',
+            'SBJ.CHR.Contact.DateOfBirth'
+          )
+
+          # Items matched on string distance
+          if ( any( chr_stringdist %in% chr_items ) ) {
+
+            lst_combos[[s]]$stringdist <- which(
+              chr_items %in% chr_stringdist
+            )
+
+            # Close 'Items matched on string distance'
+          }
+
+          chr_numeric <- c(
+            'SBJ.INT.Link.SchoolCode',
+            'SBJ.CHR.Contact.Cellphone'
+          )
+
+          # Items matched on numeric distance
+          if ( any( chr_numeric %in% chr_items ) ) {
+
+            lst_combos[[s]]$numeric <- which(
+              chr_items %in% chr_numeric
+            )
+
+            # Close 'Items matched on numeric distance'
+          }
+
+          chr_partial <- c(
+            'SBJ.CHR.Contact.Name'
+          )
+
+          # Items acceptable for partial matching
+          if ( any( chr_partial %in% chr_items ) ) {
+
+            lst_combos[[s]]$partial <- which(
+              chr_items %in% chr_partial
+            )
+
+            # Close 'Items acceptable for partial matching'
+          }
+
+          # Close 'Standard linking items'
+        }
+
+        # No matches
+        if ( length(lst_combos[[s]]) == 0 ) {
+
+          lst_combos[[s]] <- list(
+            stringdist = seq_along(chr_items)
+          )
+
+          # Close 'No matches'
+        }
+
+        # Close 'Loop over slots'
+      }
+
+      # Close 'No input'
+    }
+
+    # Check values
+
+    chr_error <-
+      paste0(
+        "\nArgument 'lst_combos' must be a list of ",
+        "lists (one sublist for each set) consisting of ",
+        "the elements 'stringdist', 'numeric', and 'partial' ",
+        "in the format:\n",
+        "list(\n",
+        "  <Set> = list(\n",
+        "    stringdist = <item indices>,\n",
+        "    numeric = <item indices>,\n",
+        "    partial = <item indices>\n",
+        "  ),\n",
+        "  ...\n",
+        ")\n",
+        "\n",
+        "Items indexed by 'stringdist' will be matched ",
+        "by string distance and items index by 'partial' ",
+        "can have partial matches only\n",
+        "\n",
+        "Number of elements in 'lst_combos' must match number ",
+        "of elements in 'lst_items' and have the same name"
+      )
+
+    if ( is.null(lst_combos) )
+      stop( chr_error )
+
+    if ( !is.list(lst_combos) )
+      stop( chr_error )
+
+    if ( length(lst_combos) != length(lst_items) )
+      stop( chr_error )
+
+    if ( !all( names(lst_combos) == names(lst_items) ) )
+      stop( chr_error )
+
+    # Loop over sets
+    for ( s in seq_along(lst_combos) ) {
+
+      lgc_names_correct <- all(
+        names( lst_combos[[s]] ) %in% c( 'stringdist', 'numeric', 'partial' )
+      )
+
+      if ( !lgc_names_correct )
+        stop( chr_error )
+
+      lgc_indices_match <-
+        all( unique( unlist( lst_combos ) ) %in% seq_along(lst_items[[s]] ) )
+
+      # Confirm that indices correspond to items
+      if ( !lgc_indices_match )
+        stop( chr_error )
+
+      # Close 'Loop over sets'
+    }
+
+    return( lst_combos )
+
+    # Close else for 'Exact matching'
   }
 
-  if (lgc_progress) '--End: swaap_link.helper.input'
-
-  chr_error <- paste0(
-    "Check inputs as no processing was done. Argument ",
-    "'chr_input' should be either 'sets', 'items', ",
-    "'combos', or 'missing'"
-  )
-
-  stop(chr_error)
 }
 
+#### 3.4) swaap_link.input.missing ####
+#' Function to Define Missing Items to Ignore
+#'
+#' Function to generate input to pass to the [swaap::swaap_link]
+#' function. Creates a list of lists, the integer indices
+#' for the linking items that must be non-missing for linking
+#' to be attempted with exact matching methods.
+#'
+#' @param dtf_long A data frame, assumed to be standard processed
+#'   school-wide assessment data.
+#' @param lst_items A list of of character vectors, the columns to
+#'   use as linking items for each set (the pair of time points to link).
+#'   See output from [swaap::swaap_link.input.items].
+#' @param lst_combos A list of lists, each sublist consisting of integer
+#'   indices indicating the combination of linking items to use.
+#'   See output from [swaap::swaap_link.input.combos].
+#' @param lst_missing An optional argument, a list of lists, each
+#'   sublist consisting of integer indices for items that must be
+#'   non-missing for linking to be attempted. If provided,
+#'   function checks if input is valid.
+#'
+#' @returns A list of lists, each sublist consisting of integer indices
+#' for items that must be non-missing for linking to be attempted.
+#'
+#' @examples
+#' dtf_long <- swaap_simulate( 'link', 'demo' )
+#'
+#' lst_sets <- dtf_long |>
+#'   swaap_link.input.sets()
+#' lst_items <- dtf_long |>
+#'   swaap_link.input.items( lst_sets )
+#' lst_combos <- dtf_long |>
+#'   swaap_link.input.combos( lst_items )
+#' lst_missing <- dtf_long |>
+#'   swaap_link.input.missing( lst_items, lst_comobs )
+#'
+#' @export
 
-#### 3.2) swaap_link.helper.parameters ####
+swaap_link.input.missing <- function(
+    dtf_long,
+    lst_items,
+    lst_combos,
+    lst_missing = NULL ) {
+
+  # No input
+  if ( is.null(lst_missing) ) {
+
+    # Initialize list
+    lst_missing <- lst_combos
+
+    # Known defaults
+    lst_defaults <- list(
+      school = list(
+        standard = swaap::swaap_select.linking(),
+        original = swaap::swaap_select.linking( lgc_original = TRUE )
+      ),
+      district = list(
+        standard = swaap::swaap_select.linking( lgc_district = TRUE ),
+        original = swaap::swaap_select.linking(
+          lgc_original = TRUE, lgc_district = TRUE
+        )
+      )
+    )
+
+    # Loop over sets
+    for ( s in seq_along(lst_items) ) {
+
+      chr_items <- lst_items[[s]]
+
+      # Loop over combos
+      for ( l in seq_along(lst_combos[[s]]) ) {
+
+        int_missing <- seq_along(chr_items)
+
+        chr_current <- chr_items[ lst_combos[[s]][[l]] ]
+
+        # Check to see if there are at least 5 linking questions
+        int_LQ <- sum(
+          chr_current %in% c(
+            lst_defaults$school$standard[-(1:2)],
+            lst_defaults$school$original[-(1:2)]
+          )
+        )
+
+        # Check to see if there is a school ID
+        int_SI <- which(
+          chr_items %in% c(
+            lst_defaults$school$standard[2],
+            lst_defaults$school$original[2]
+          )
+        )
+
+        # School ID can be missing when using linking questions
+        if ( int_LQ >= 5 & length(int_SI) > 0 ) {
+
+          int_missing <- int_missing[
+            -int_SI
+          ]
+
+          # Close 'School ID can be missing when using linking questions'
+        }
+
+        # If not using linking questions
+        if ( int_LQ == 0 ) {
+
+          int_missing <- seq_along(chr_current)
+
+          # Close 'If not using linking questions'
+        }
+
+        lst_missing[[s]][[l]] <- int_missing
+
+        # Close 'Loop over combos'
+      }
+
+      # Close 'Loop over sets'
+    }
+
+    # Close 'No input'
+  }
+
+  # Check values
+
+  chr_error <-
+    paste0(
+      "\nArgument 'lst_missing' must be a list of ",
+      "lists (one sublist for each set) consisting of ",
+      "integer vectors indicating which linking items ",
+      "to check for missingness per combo, in the format:\n",
+      "list(\n",
+      "  <Set> = list(\n",
+      "    <Combo> = <item indices>,\n",
+      "    ...\n",
+      "  ),\n",
+      "  ...\n",
+      ")\n",
+      "\n",
+      "If any items for a given combo are found missing no ",
+      "linking will be done for that record - this can be ",
+      "suppressed by using c() instead"
+    )
+
+  # Make sure is list of lists
+  if ( !is.list(lst_missing) ) stop(chr_error)
+
+  # Make sure has same number as sets
+  if ( length(lst_missing) != length(lst_items) )
+    stop( "Argument 'lst_missing' must be same length as 'lst_items'" )
+
+  lgc_in_data <- rep( TRUE, length(lst_missing) )
+
+  # Loop over sets
+  for ( s in seq_along(lst_missing) ) {
+
+    # Check is list of lists
+    if ( !is.list( lst_missing[[s]] ) ) stop(chr_error)
+
+    # Make sure has same number as combos
+    if ( length(lst_missing[[s]]) != length(lst_combos[[s]]) )
+      stop(
+        "Argument 'lst_missing' must have same structure as 'lst_combos"
+      )
+
+    # Loop over sublists
+    for (l in seq_along( lst_missing[[s]] ) ) {
+
+      lgc_in_data[s] <- all(
+        lst_missing[[s]][[l]] %in% seq_along( lst_items[[s]] )
+      )
+
+      # Close 'Loop over sublists'
+    }
+
+    # Close 'Loop over sets'
+  }
+
+  if ( !all(lgc_in_data) )
+    stop( 'Item indices for missing must match items provided' )
+
+  return( lst_missing )
+}
+
+#### 4) Helper functions ####
+
+#### 4.1) swaap_link.parameters ####
 #' Extract Linkage Parameters
 #'
 #' Function to extract the parameters used when
@@ -3106,7 +3090,7 @@ swaap_link.helper.input <- function(
 #'
 #' @export
 
-swaap_link.helper.parameters <- function(
+swaap_link.parameters <- function(
     dtf_linked,
     chr_input = 'lst_items',
     lgc_unlist = FALSE ) {
@@ -3140,7 +3124,7 @@ swaap_link.helper.parameters <- function(
   return( obj_return )
 }
 
-#### 3.3) swaap_link.helper.rows ####
+#### 4.2) swaap_link.rows ####
 #' Extract Rows Flagged for Linking
 #'
 #' Function to extract the rows flagged for linking after
@@ -3160,7 +3144,7 @@ swaap_link.helper.parameters <- function(
 #'
 #' @export
 
-swaap_link.helper.rows <- function(
+swaap_link.rows <- function(
     dtf_linked,
     int_row = 1 ) {
 
@@ -3217,7 +3201,7 @@ swaap_link.helper.rows <- function(
   return( int_rows )
 }
 
-#### 3.4) swaap_link.helper.trim ####
+#### 4.3) swaap_link.trim ####
 #' Flag Duplicate Records to Trim Based on Rules
 #'
 #' Function to flag duplicate records based
@@ -3243,7 +3227,7 @@ swaap_link.helper.rows <- function(
 #'
 #' @export
 
-swaap_link.helper.trim <- function(
+swaap_link.trim <- function(
     dtf_long,
     fun_rule = NULL,
     lst_arg = NULL ) {
@@ -3254,7 +3238,7 @@ swaap_link.helper.trim <- function(
   # Default rule for resolving duplicates
   if ( is.null(fun_rule) ) {
 
-    fun_rule <- swaap_link.helper.trim_rule(
+    fun_rule <- swaap_link.trim_rule(
       chr_rule = ''
     )
 
@@ -3334,7 +3318,7 @@ swaap_link.helper.trim <- function(
 }
 
 
-#### 3.5) swaap_link.helper.trim_rule ####
+#### 4.4) swaap_link.trim_rule ####
 #' Return Function for Rule to Trim Duplicates
 #'
 #' Function to return another function that implements
@@ -3355,7 +3339,7 @@ swaap_link.helper.trim <- function(
 #'
 #' @export
 
-swaap_link.helper.trim_rule <- function(
+swaap_link.trim_rule <- function(
     chr_rule ) {
 
   #### 3.5.1) List of defined rules ####
@@ -3390,9 +3374,9 @@ swaap_link.helper.trim_rule <- function(
     # Close 'Default option'
   }
 
-  #### 3.5.2) Rules for trimming duplicates ####
+  #### 4.4.2) Rules for trimming duplicates ####
 
-  #### 3.5.2.1) fun_rule.completed ####
+  #### 4.4.2.1) fun_rule.completed ####
   fun_rule.completed <- function(
     dtf_long,
     lst_arg = NULL ) {
@@ -3418,7 +3402,7 @@ swaap_link.helper.trim_rule <- function(
     return( !lgc_out )
   }
 
-  #### 3.5.2.2) fun_rule.outcome_and_completed ####
+  #### 4.4.2.2) fun_rule.outcome_and_completed ####
   fun_rule.outcome_and_completed <- function(
     dtf_long,
     lst_arg = NULL ) {
@@ -3467,7 +3451,7 @@ swaap_link.helper.trim_rule <- function(
     return( !lgc_out )
   }
 
-  #### 3.5.2.3) fun_rule.duplicate_times ####
+  #### 4.4.2.3) fun_rule.duplicate_times ####
   fun_rule.duplicate_times <- function(
     dtf_long,
     lst_arg = NULL ) {
@@ -3507,7 +3491,7 @@ swaap_link.helper.trim_rule <- function(
     return( !lgc_out )
   }
 
-  #### 3.5.3) Return specified rule ####
+  #### 4.4.3) Return specified rule ####
 
   if ( chr_rule %in% lst_rules$completed )
     return( fun_rule.completed )
@@ -3527,7 +3511,7 @@ swaap_link.helper.trim_rule <- function(
   stop( chr_err )
 }
 
-#### 3.6) swaap_link.helper.similarity ####
+#### 4.5) swaap_link.similarity ####
 #' Compute Post-hoc Similarity Score for Linked Records
 #'
 #' Function to compute a post-hoc similarity score based
@@ -3551,7 +3535,7 @@ swaap_link.helper.trim_rule <- function(
 #'
 #' @export
 
-swaap_link.helper.similarity <- function(
+swaap_link.similarity <- function(
     dtf_linked,
     chr_items,
     int_times = NULL ) {
@@ -3640,102 +3624,367 @@ swaap_link.helper.similarity <- function(
   return( lst_output )
 }
 
-#### 4) Report functions ####
+#### 4.6) swaap_link.sets ####
+#' Summary of Sets for Linking
+#'
+#' Returns a table summarizing the set of pairs to link
+#' over in terms of year, semester, and grade level.
+#'
+#' @param dtf_data A data frame, assumed to be standard processed
+#'   school-wide assessment data with the columns
+#'   \code{'SSS.INT.SurveyYear'}, \code{'SSS.CHR.Semester'},
+#'   and \code{'SSS.INT.Grade'}.
+#' @param lst_sets A list of lists, with each sublist specifying
+#'   \code{'Base'} and \code{'Add'} logical vectors for the pair of data
+#'   subsets in \code{dtf_long} to link over (e.g., \code{'Base'} would
+#'   subset the first time point and \code{'Add'} would subset the second
+#'   time point).
+#' @param lgc_character A logical value; if \code{TRUE} outputs a
+#'   character vector instead of a data frame.
+#'
+#' @author Kevin Potter
+#'
+#' @returns Either a data frame with a row for each set of pairs, or
+#' a character vector with concatenated abbreviations describing the
+#' sets.
+#'
+#' @export
 
-#### 4.1) swaap_link.report.by_ID ####
+swaap_link.sets <- function(
+    dtf_data,
+    lst_sets,
+    lgc_character = FALSE ) {
+
+  dtf_sets <- data.frame(
+    Set = seq_along(lst_sets),
+    Year.Base = NA,
+    Semester.Base = NA,
+    Grade.Base = NA,
+    Records.Base = NA,
+    Year.Add = NA,
+    Semester.Add = NA,
+    Grade.Add = NA,
+    Records.Add = NA
+  )
+
+  # Loop over sets
+  for ( s in 1:nrow(dtf_sets) ) {
+
+    dtf_sets$Year.Base[s] <-
+      dtf_data$SSS.INT.SurveyYear[
+        lst_sets[[s]][[1]]
+      ] |> unique() |> substr( 3, 4 )
+
+    dtf_sets$Year.Add[s] <-
+      dtf_data$SSS.INT.SurveyYear[
+        lst_sets[[s]][[2]]
+      ] |> unique() |> substr( 3, 4 )
+
+    dtf_sets$Semester.Base[s] <-
+      dtf_data$SSS.CHR.Semester[
+        lst_sets[[s]][[1]]
+      ] |> unique() |> substr( 1, 1 )
+
+    dtf_sets$Semester.Add[s] <-
+      dtf_data$SSS.CHR.Semester[
+        lst_sets[[s]][[2]]
+      ] |> unique() |> substr( 1, 1 )
+
+    dtf_sets$Grade.Base[s] <-
+      dtf_data$SSS.INT.Grade[
+        lst_sets[[s]][[1]]
+      ] |> unique()
+
+    dtf_sets$Grade.Add[s] <-
+      dtf_data$SSS.INT.Grade[
+        lst_sets[[s]][[2]]
+      ] |> unique()
+
+    dtf_sets$Records.Base[s] <- sum(
+      lst_sets[[s]][[1]]
+    )
+    dtf_sets$Records.Add[s] <- sum(
+      lst_sets[[s]][[2]]
+    )
+
+    # Close 'Loop over sets'
+  }
+
+  lgc_grade_base <- dtf_sets$Grade.Base < 10
+  lgc_grade_add <- dtf_sets$Grade.Add < 10
+
+  dtf_sets$Grade.Base[ lgc_grade_base ] <-
+    paste0( '0', dtf_sets$Grade.Base[ lgc_grade_base ] )
+  dtf_sets$Grade.Add[ lgc_grade_add ] <-
+    paste0( '0', dtf_sets$Grade.Add[ lgc_grade_add ] )
+
+  # Return character vector
+  if ( lgc_character ) {
+
+    chr_sets <- paste0(
+      'Y',
+      dtf_sets$Year.Base,
+      dtf_sets$Semester.Base,
+      'G',
+      dtf_sets$Grade.Base,
+      't',
+      'Y',
+      dtf_sets$Year.Add,
+      dtf_sets$Semester.Add,
+      'G',
+      dtf_sets$Grade.Add
+    )
+
+    return( chr_sets )
+
+    # Close 'Return character vector'
+  }
+
+  return( dtf_sets )
+}
+
+#### 3.8) swaap_link.timepoints ####
+#' Extract Possible Linked Time Point Patterns
+#'
+#' Function to extract possible linked time point patterns
+#' based on available time points, or isolate records that
+#' meet linked time point patterns.
+#'
+#' @param dtf_data A data frame, assumed to be standard processed
+#'   school-wide assessment data with the columns
+#'   \code{'SSS.INT.TimePoint'} and \code{'LNK.CHR.TimePoints'}.
+#'
+#' @author Kevin Potter
+#'
+#' @returns Either a character vector with all possible linked
+#' time point patterns (ignoring duplicates), or a logical
+#' vector for all records that meet this linked time point
+#' patterns.
+#'
+#' @export
+
+swaap_link.timepoints <- function(
+    dtf_data,
+    lgc_character = TRUE ) {
+
+  int_times <- dtf_data$SSS.INT.TimePoint |> unique() |> sort()
+
+  lst_links <- lapply(
+    2:length(int_times),
+    function(n) {
+      mat_links <- combn( int_times, n )
+      chr_links <- sapply(
+        1:ncol(mat_links), function(k) {
+          paste( mat_links[, k], collapse = '-' )
+        }
+      )
+    }
+  )
+  chr_timepoints <- unlist( lst_links )
+
+  if (!lgc_character)
+    return( dtf_data$LNK.CHR.TimePoints %in% chr_timepoints )
+
+  return( chr_timepoints )
+}
+
+#### 3.9) swaap_link.linked_over ####
+
+swaap_link.linked_over <- function(
+    dtf_linked,
+    chr_measures ) {
+
+  chr_new <- sapply(
+    chr_measures, function(m) {
+
+      chr_parts <- strsplit(
+        m, split = '.', fixed = TRUE
+      )[[1]]
+
+      chr_out <- paste0(
+        'LNK.CHR.', chr_parts[3], 's'
+      )
+
+      return( chr_out )
+    }
+  )
+
+  # Loop over measures
+  for ( m in seq_along(chr_new) )
+    dtf_linked[[ chr_new[m] ]] <- NA
+
+  chr_IDs <- unique( dtf_SRV.Merged$IDN.CHR.Linked.ID )
+
+  # Loop over IDs
+  for ( i in chr_IDs ) {
+
+    lgc_cases <- dtf_linked$IDN.CHR.Linked.ID %in% i
+
+    # Loop over measures
+    for ( m in seq_along(chr_new) )
+      dtf_linked[[ chr_new[m] ]][lgc_cases] <- paste(
+        sort( dtf_linked[[ chr_measures[m] ]][lgc_cases] ),
+        collapse = '-'
+      )
+
+    # Close 'Loop over IDs'
+  }
+
+  return( dtf_linked )
+}
+
+
+#### 5) Report functions ####
+
+#### 5.1) swaap_link.report.by_ID ####
 #' Linkage Patterns by Linked Identifier
 #'
-#' Function to determine the pattern of linked time
-#' points for each linked ID.
+#' Function to summarize measures by linked IDs.
+#' As default summarizes the pattern of linked
+#' time points.
 #'
 #' @param dtf_linked A data frame, output from the
 #'   [swaap::swaap_link] function. Must have the columns
-#'   \code{IDN.CHR.Linked.ID} and \code{SSS.INT.TimePoint}.
+#'   \code{IDN.CHR.Linked.ID}.
+#' @param chr_measures A character vector, the columns in
+#'   \code{dtf_linked} to summarize per unique value of
+#'   \code{IDN.CHR.Linked.ID}.
+#' @param fun_summary An optional function to summarize
+#'   a vector of values. Default is to sort values
+#'   and concatenate with a hyphen.
+#' @param chr_start A character vector (length cannot
+#'   exceed \code{chr_measures}), the start of each
+#'   name for the new summary variables.
+#' @param chr_end A character vector (length cannot
+#'   exceed \code{chr_measures}), the end of each
+#'   name for the new summary variables.
+#' @param lst_args An optional list of additional inputs
+#'   for the \code{fun_summary} function. If less than
+#'   5 elements are provided, expanded to 5 elements
+#'   via [base::rep_len], each element is passed as
+#'   an additional argument to \code{fun_summary}
+#'   per each measure.
+#' @param lgc_update A logical value; if \code{TRUE}
+#'   merges the wide-form summary variables by ID
+#'   with the original long-form data frame
+#'   \code{dtf_linked}.
 #'
 #' @author Kevin Potter
 #'
 #' @returns A wide-form data frame with one row
 #' per linked ID along with the pattern of linked
 #' time points (e.g., \code{'0-1'} means a link
-#' from baseline to the first time point).
+#' from baseline to the first time point). If
+#' \code{lgc_update} is \code{TRUE}, instead
+#' returns an updated version of \code{dtf_linked}.
 #'
 #' @export
 
 swaap_link.report.by_ID <- function(
     dtf_linked,
+    chr_measures = 'SSS.INT.TimePoint',
+    fun_summary = NULL,
+    chr_start = 'LNK.CHR.',
+    chr_end = 's',
+    lst_args = NULL,
     lgc_update = FALSE ) {
+
+  if ( length(chr_measures) > 5 )
+    stop( 'Only up to 5 measures allowed at a time' )
+
+  # Expand size
+  if ( length(lst_args) <= 1 ) {
+
+    lst_args <- list(
+      lst_args,
+      lst_args,
+      lst_args,
+      lst_args,
+      lst_args
+    )
+
+    # Close 'Expand size'
+  }
+
+  # Expand size
+  if ( length(lst_args) < 5 )
+    lst_args <- rep_len( lst_args, 5 )
+
+  # Default summary function
+  if ( is.null( fun_summary ) ) {
+
+    fun_summary <- function(
+      obj_vec, lst_args ) {
+
+      return( paste( sort( obj_vec ), collapse = '-' ) )
+
+    }
+
+    # Close 'Default summary function'
+  }
+
+  # Loop over up to 5 measures
+  for ( m in 1:5 ) {
+
+    dtf_linked[[ paste0( 'M', m ) ]] <- NA
+
+    # If measure exists
+    if ( m <= length(chr_measures) )
+      dtf_linked[[ paste0( 'M', m ) ]] <-
+        dtf_linked[[ chr_measures[m] ]]
+
+    # Close 'Loop over up to 5 measures'
+  }
 
   dtf_IDs <- dtf_linked |>
     dplyr::group_by(
       IDN.CHR.Linked.ID
     ) |>
     dplyr::summarise(
-      LNK.CHR.TimePoints = paste(
-        sort( SSS.INT.TimePoint ), collapse = '-'
-      ),
-      LNK.LGC.AnyDuplicates = any(
-        LNK.LGC.Duplicates
-      ),
+      SM1 = fun_summary( M1, lst_args[[1]] ),
+      SM2 = fun_summary( M2, lst_args[[2]] ),
+      SM3 = fun_summary( M3, lst_args[[3]] ),
+      SM4 = fun_summary( M4, lst_args[[4]] ),
+      SM5 = fun_summary( M5, lst_args[[5]] ),
       .groups = 'drop'
     ) |>
     data.frame()
 
-  # Patterns per time point
-  chr_TP <- sort( unique( dtf_linked$SSS.INT.TimePoint) )
+  chr_columns <- colnames(dtf_IDs)
+  chr_start <- rep_len( chr_start, length(chr_measures) )
+  chr_end <- rep_len( chr_end, length(chr_measures) )
+  chr_new <- sapply(
+    seq_along( chr_measures ), function(m) {
 
-  mat_TP <- matrix(
-    0, nrow(dtf_IDs), length( chr_TP )
+      return(
+        paste0(
+          chr_start[m],
+          strsplit( chr_measures[m], split = '.', fixed = TRUE )[[1]][3],
+          chr_end[m]
+        )
+      )
+
+    }
   )
-  colnames( mat_TP ) <- paste0(
-    'LNK.INT.Records.TP.', chr_TP
-  )
-
-  # Loop over each time point
-  for ( j in 1:ncol(mat_TP) ) {
-
-    lgc_any <- grepl(
-      chr_TP[j], dtf_IDs$LNK.CHR.TimePoints,
-      fixed = TRUE
+  chr_columns[seq_along(chr_measures) + 1] <- chr_new
+  colnames(dtf_IDs) <- chr_columns
+  dtf_IDs <- dtf_IDs |>
+    dplyr::select(
+      IDN.CHR.Linked.ID,
+      all_of( chr_new )
     )
-
-    mat_TP[lgc_any, j] <-
-      dtf_IDs$LNK.CHR.TimePoints[
-        lgc_any
-      ] |> sapply(
-        function(x) {
-          grepl( '-', strsplit( x, '' )[[1]], fixed = TRUE ) |> sum()
-        }
-      ) + 1
-
-    # Close 'Loop over each time point'
-  }
-
-  dtf_IDs <- cbind( dtf_IDs, mat_TP )
 
   # Update original data set with linkage patterns
   if ( lgc_update ) {
 
-    dtf_linked$LNK.CHR.TimePoints <- sapply(
-      1:nrow(dtf_linked), function(r) {
-
-        chr_out <- ''
-
-        lgc_rows <-
-          dtf_IDs$IDN.CHR.Linked.ID %in%
-          dtf_linked$IDN.CHR.Linked.ID[r]
-
-        # Return pattern
-        if ( any(lgc_rows) ) {
-
-          chr_out <- dtf_IDs$LNK.CHR.TimePoints[
-            lgc_rows
-          ]
-
-          # Close 'Return pattern'
-        }
-
-        return( chr_out )
-      }
+    dtf_linked <- suppressMessages(
+      dtf_linked |>
+        dplyr::left_join(
+          dtf_IDs
+        ) |>
+        dplyr::select(
+          -all_of( paste0( 'M', 1:5 ) )
+        )
     )
 
     return( dtf_linked )
@@ -3746,7 +3995,7 @@ swaap_link.report.by_ID <- function(
   return( dtf_IDs )
 }
 
-#### 4.2) swaap_link.report ####
+#### 5.2) swaap_link.report ####
 #' Summary of Linking of Records
 #'
 #' Function to summarize the performance of
@@ -3781,7 +4030,7 @@ swaap_link.report <- function(
 
   lst_output <- list()
 
-  #### 4.1) Setup ####
+  #### 5.2.1) Setup ####
 
   fun_count_percent <- function(
     lgc_x,
@@ -3916,7 +4165,7 @@ swaap_link.report <- function(
   #   overall = dtf_summary.linked_with
   # )
 
-  #### 4.?) ... ####
+  #### 5.2.?) ... ####
 
   # If column with true IDs detected
   if ( 'LNK.INT.True.ID' %in% colnames(dtf_linked) ) {
@@ -4016,7 +4265,7 @@ swaap_link.report <- function(
   return( lst_output )
 }
 
-#### 4.3) swaap_link.report.discrepant ####
+#### 5.3) swaap_link.report.discrepant ####
 #' Determine Discrepancies Between Records
 #'
 #' Given a data frame with linked records across
@@ -4072,7 +4321,7 @@ swaap_link.report.discrepant <- function(
     mat_layout = NULL,
     chr_colors = c( 'lightblue', 'pink' ) ) {
 
-  #### 4.3.1) Setup ####
+  #### 5.3.1) Setup ####
 
   if ( !chr_missingness %in% c( 'match', 'ignore', 'exclude') )
     stop(
@@ -4220,7 +4469,7 @@ swaap_link.report.discrepant <- function(
     item = dtf_item
   )
 
-  #### 4.3.2) Plotting ####
+  #### 5.3.2) Plotting ####
 
   # Generate plot
   if (lgc_plot) {
@@ -4250,7 +4499,7 @@ swaap_link.report.discrepant <- function(
       mat_layout
     )
 
-    #### 4.3.2.1) Panel 1 ####
+    #### 5.3.2.1) Panel 1 ####
 
     num_xl <- c( 0, nrow(dtf_pattern) )
     num_yl <- c( 0, int_col )
@@ -4289,7 +4538,7 @@ swaap_link.report.discrepant <- function(
       # Close 'Loop over columns'
     }
 
-    #### 4.3.2.2) Panel 2 ####
+    #### 5.3.2.2) Panel 2 ####
 
     int_counts <- dtf_pattern$Pattern.Count
 
@@ -4338,7 +4587,7 @@ swaap_link.report.discrepant <- function(
       # Close 'Loop over rows'
     }
 
-    #### 4.3.2.3) Panel 3 ####
+    #### 5.3.2.3) Panel 3 ####
 
     int_counts <- dtf_item$Stable.Count
 
@@ -4395,7 +4644,7 @@ swaap_link.report.discrepant <- function(
       # Close 'Loop over rows'
     }
 
-    #### 4.3.2.4) Panel 4 ####
+    #### 5.3.2.4) Panel 4 ####
 
     par( mar = rep( 0, 4 ) )
 
@@ -4420,3 +4669,32 @@ swaap_link.report.discrepant <- function(
   return( lst_summary )
 }
 
+#### 5.4) swaap_link.report.comparison ####
+
+swaap_link.report.comparison <- function(
+    dtf_linked,
+    chr_ID,
+    chr_TP ) {
+
+  dtf_linked$ID_1 <- dtf_linked[[ chr_ID[1] ]]
+  dtf_linked$ID_2 <- dtf_linked[[ chr_ID[2] ]]
+
+  dtf_linked$TP_1 <-dtf_linked[[ chr_TP[1] ]]
+  dtf_linked$TP_2 <- dtf_linked[[ chr_TP[2] ]]
+
+  dtf_time_by_ID <- dtf_linked |>
+    dplyr::group_by(
+      ID = ID_1
+    ) |> dplyr::summarise(
+      Records = length( ID_1 ),
+      Distinct = dplyr::n_distinct( ID_2 ),
+      TimePoints = unique( TP_1 ),
+      Match = all( TP_1 == TP_2 ),
+      TimePoint.Mismatch1 = unique(TP_2)[1],
+      TimePoint.Mismatch2 = unique(TP_2)[2],
+      TimePoint.Mismatch3 = unique(TP_2)[3],
+      .groups = 'drop'
+    ) |> data.frame()
+
+  return( dtf_time_by_ID )
+}

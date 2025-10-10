@@ -1,14 +1,18 @@
 # Simulation functions
-# Written by Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Written by...
+#   Kevin Potter
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-05-14
+# Last updated: 2025-09-03
 
 # Table of contents
 # 1) swaap_simulate
 # L) Link
-#   L.D) swaap_simulate.link.debug
+#   L.D) swaap_simulate.link.debug_diss
 #     L.D.1) Initialize data
 #     L.D.2) Standard linking + no links
 #     L.D.3) Dissimilarity = 1 [Base]
@@ -78,9 +82,24 @@ swaap_simulate <- function(
 
   lst_subtypes <- list(
     link = list(
-      debug = c(
+      debug_diss = c(
         'debug',
-        'Debug'
+        'debug-exact',
+        'debug-dissimilarity',
+        'debug-diss',
+        'Debug',
+        'Debug-Exact',
+        'Debug-exact',
+        'Debug-Dissimilarity',
+        'Debug-dissimilarity',
+        'Debug-Diss',
+        'Debug-diss'
+
+      ),
+      debug_fast = c(
+        'debug-fastLink',
+        'Debug-fastLink'
+
       ),
       demo = c(
         'demo',
@@ -105,11 +124,23 @@ swaap_simulate <- function(
     # Default subtype
     if ( chr_subtype == '' ) chr_subtype <- 'debug'
 
-    # Data for debugging
-    if ( chr_subtype %in% lst_subtypes$link$debug ) {
+    # Data for debugging [Exact]
+    if ( chr_subtype %in% lst_subtypes$link$debug_diss ) {
 
       return(
-        swaap_simulate.link.debug(
+        swaap_simulate.link.debug_diss(
+          ...
+        )
+      )
+
+      # Close 'Data for debugging'
+    }
+
+    # Data for debugging [fastLink]
+    if ( chr_subtype %in% lst_subtypes$link$debug_fast ) {
+
+      return(
+        swaap_simulate.link.debug_fast(
           ...
         )
       )
@@ -147,7 +178,8 @@ swaap_simulate <- function(
   chr_error <- paste0(
     "Check argument 'chr_type' & 'chr_subtype'; options include:\n",
     "  chr_type = 'link'\n",
-    "    chr_subtype = 'debug'\n",
+    "    chr_subtype = 'debug-exact'\n",
+    "    chr_subtype = 'debug-fastLink'\n",
     "    chr_subtype = 'demo'\n",
     "    chr_subtype = 'duplicate'\n"
   )
@@ -160,9 +192,9 @@ swaap_simulate <- function(
 
 #### L) Link ####
 
-#### L.D) swaap_simulate.link.debug ####
+#### L.D) swaap_simulate.link.debug_diss ####
 
-swaap_simulate.link.debug <- function(
+swaap_simulate.link.debug_diss <- function(
     int_RNG_seed = 20250415 ) {
 
   #### L.D.1) Initialize data ####
@@ -215,11 +247,47 @@ swaap_simulate.link.debug <- function(
     #   Case 4
     c( 7, 7, NA, NA )
   )
+  dtf_long$SSS.INT.District.Code <- c(
+    # Standard linking
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # No links
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # Specific tests
+    # + Dissimilarity = 1 [Base]
+    c(1, 1, 1) |> rep(6),
+    # + Dissimilarity = 1 [Add]
+    c(1, 1, 1) |> rep(6),
+    # + Duplicate records [Base]
+    rep( 1, 3 ),
+    # + Duplicate records [Add]
+    rep( 1, 3 ),
+    # + Subset dissimilarity = 0
+    rep( 1, 6 ) |> rep(2),
+    # + Dissimilarity off by 1
+    rep( 1, 6 ) |> rep(2),
+    # + Duplicate records w/ NA [Base]
+    rep( 1, 3 ),
+    # + Duplicate records w/ NA [Add]
+    rep( 1, 3 ),
+    # + Test of priority [School ID over questions]
+    c( 1, 1 ),
+    # + Link using different items by time point
+    c( 1, 1, 1 ),
+    # + Special cases for duplicates
+    #   Case 1
+    rep( 1, 4 ),
+    #   Case 2
+    rep( 1, 4 ),
+    #   Case 3
+    rep( 1, 3 ),
+    #   Case 4
+    rep( 1, 4 )
+  )
   dtf_long$SSS.INT.School.Code <- c(
     # Standard linking
-    rep( 1, 8*3 ),
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
     # No links
-    rep( 1, 8*3 ),
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
     # Specific tests
     # + Dissimilarity = 1 [Base]
     c(1, 1, 1) |> rep(6),
@@ -377,7 +445,7 @@ swaap_simulate.link.debug <- function(
         int_size = length(int_unique),
         lgc_replace = TRUE,
         int_freq = NULL # dtf_possible[[2]]
-    )
+      )
 
     # Copy cases that should be linked
     dtf_long[[ chr_linking_questions[l+1] ]][2:8 + 8] <-
@@ -1093,6 +1161,206 @@ swaap_simulate.link.debug <- function(
   int_old <- int_old + max(int_new)
   int_ID_old <- int_ID_old + max(int_ID)
 
+
+  #### L.D._) Final processing ####
+
+  # Ensure unlinkable true ID is 0
+  dtf_long$LNK.INT.True.ID[
+    !dtf_long$LNK.LGC.True.Linkable
+  ] <- 0
+
+  # Ensure IDs increment by 1
+  int_old_IDs <- dtf_long$LNK.INT.True.ID |>
+    unique() |> sort()
+  int_new_IDs <- as.numeric(
+    as.factor( int_old_IDs )
+  ) - 1
+  # Loop over IDs
+  for ( i in seq_along(int_old_IDs) ) {
+
+    dtf_long$LNK.INT.True.ID[
+      dtf_long$LNK.INT.True.ID == int_old_IDs[i]
+    ] <- int_new_IDs[i]
+
+    # Close 'Loop over IDs'
+  }
+
+  dtf_long$LNK.INT.True.TestType <- as.numeric(
+    as.factor( dtf_long$LNK.CHR.True.TestType )
+  )
+
+  return( dtf_long )
+}
+
+#### L.D) swaap_simulate.link.debug_fast ####
+
+swaap_simulate.link.debug_fast <- function(
+    int_RNG_seed = 20250903 ) {
+
+  #### L.D.1) Initialize data ####
+
+  set.seed( int_RNG_seed )
+
+  lst_setup <- swaap_simulate.link.setup()
+
+  dtf_long <- lst_setup$design[
+    rep( 1, 54 ),
+  ]
+
+  int_SID <- sample( 1000:9999, size = 4, replace = FALSE )
+
+  dtf_long$IDX.INT.Origin.LASID <- c(
+    # Standard linking
+    int_SID[1], rep( NA, 7 ),
+    int_SID[1], rep( NA, 7 ),
+    int_SID[1], rep( NA, 7 ),
+    # No links
+    int_SID[2], rep( NA, 7 ),
+    int_SID[3], rep( NA, 7 ),
+    int_SID[4], rep( NA, 7 ),
+    # False positive school code
+    rep( NA, 6 )
+  )
+  dtf_long$SSS.INT.District.Code <- c(
+    # Standard linking
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # No links
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # False positive school code
+    c( 1, 2, 1, 2, 1, 2 )
+  )
+  dtf_long$SSS.INT.School.Code <- c(
+    # Standard linking
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # No links
+    rep( c( 1, 1, 1, 2, 2, 2, 3, 3 ), 3 ),
+    # False positive school code
+    c( 1, 2, 1, 2, 1, 2 )
+  )
+  dtf_long$SSS.INT.TimePoint <- c(
+    # Standard linking
+    rep( 0, 8 ),
+    rep( 1, 8 ),
+    rep( 2, 8 ),
+    # No links
+    rep( 0, 8 ),
+    rep( 1, 8 ),
+    rep( 2, 8 ),
+    # False positive school code
+    rep( 0:1, 3 )
+  )
+  dtf_long$LNK.LGC.True.Linkable <- c(
+    # Standard linking
+    rep( TRUE, 8*3 ),
+    # No links
+    rep( FALSE, 8*3 ),
+    # False positive school code
+    rep( FALSE, 6 )
+  )
+
+  # Update variables based on time point
+  dtf_long$SSS.INT.SurveyYear <- c(
+    2023, 2024, 2024
+  )[dtf_long$SSS.INT.TimePoint + 1]
+  dtf_long$SSS.INT.Grade <- c(
+    9, 9, 10
+  )[dtf_long$SSS.INT.TimePoint + 1]
+  dtf_long$SSS.DTM.SurveyStart <- c(
+    lst_setup$dates['Y23F'],
+    lst_setup$dates['Y24S'],
+    lst_setup$dates['Y24F']
+  )[dtf_long$SSS.INT.TimePoint + 1]
+  dtf_long$SSS.INT.LongitudinalWave <- 1
+
+  dtf_long$IDX.CHR.Origin.ID <-
+    paste0(
+      'Fake', 1:nrow(dtf_long)
+    )
+
+  chr_linking_questions <- lst_setup$linking_questions$variables
+
+  # Kindergarten year calculated from year and grade
+  dtf_long$SBJ.INT.Link.KindergartenYearEst <-
+    c( 2023, 2023, 2024 )[ # Use start of school year
+      dtf_long$SSS.INT.TimePoint + 1
+    ] - dtf_long$SSS.INT.Grade
+
+  #### L.D.2) Standard linking + no links ####
+
+  # Standard linking + no links
+  for ( l in 1:6 ) {
+
+    dtf_possible <- lst_setup$linking_questions$possible[[
+      chr_linking_questions[l+1]
+    ]]
+
+    int_unique <- c(
+      # Standard linking
+      2:8,
+      # No link
+      (8*3 + 1):(8*6)
+    )
+
+    dtf_long[[ chr_linking_questions[l+1] ]][int_unique] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = length(int_unique),
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )
+
+    # Copy cases that should be linked
+    dtf_long[[ chr_linking_questions[l+1] ]][2:8 + 8] <-
+      dtf_long[[ chr_linking_questions[l+1] ]][2:8]
+    dtf_long[[ chr_linking_questions[l+1] ]][2:8 + 8*2] <-
+      dtf_long[[ chr_linking_questions[l+1] ]][2:8]
+
+    # Close 'Standard linking'
+  }
+
+  # Track actual links
+  dtf_long$LNK.INT.True.ID[ 1:8 ] <- 1:8
+  dtf_long$LNK.INT.True.ID[ 1:8 + 8 ] <- 1:8
+  dtf_long$LNK.INT.True.ID[ 1:8 + 8*2 ] <- 1:8
+
+  # Label test type
+  dtf_long$LNK.CHR.True.TestType[ 1:(8*3) ] <-
+    'Standard linking'
+  dtf_long$LNK.CHR.True.TestType[ (8*3) + 1:(8*3) ] <-
+    'Standard no link'
+
+  # Update indices
+  int_old <- 8*6
+  int_ID_old <- 8
+
+  #### L.D.3) False positive school code ####
+
+  # Generate pairs of records
+  for ( l in 1:6 ) {
+
+    dtf_possible <- lst_setup$linking_questions$possible[[
+      chr_linking_questions[l+1]
+    ]]
+
+    int_unique <- 1:3
+    int_rows <- int_old + 1:6
+
+    dtf_long[[ chr_linking_questions[l+1] ]][int_rows] <-
+      swaap_simulate.link.sample(
+        dtf_possible[[1]],
+        int_size = length(int_unique),
+        lgc_replace = TRUE,
+        int_freq = NULL # dtf_possible[[2]]
+      )[ rep( int_unique, each = 2) ]
+
+    # Close 'Generate pairs of records'
+  }
+
+  dtf_long$LNK.CHR.True.TestType[ int_old + 1:6 ] <-
+    'False positive school code'
+
+  # Update indices
+  int_old <- int_old + 6
 
   #### L.D._) Final processing ####
 

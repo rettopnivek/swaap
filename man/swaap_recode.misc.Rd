@@ -13,8 +13,7 @@ school-wide assessment data.}
 }
 \value{
 A data frame with the additional variables
-\code{'SBJ.CHR.PrescribedMedicationHealth'},
-\code{'SBJ.LGC.CloseConnection.<Type>'}, and
+\code{'SBJ.CHR.PrescribedMedicationHealth'}, and
 \code{'SBJ.LGC.SoughtHelp.<Type>'}.
 }
 \description{

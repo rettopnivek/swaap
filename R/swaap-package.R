@@ -3,21 +3,17 @@
 #   Jasmeen Kaur
 #   Michael Pascale
 #   Kevin Potter
+# Maintainer
+#   Kevin Potter
 # Email:
 #   kpotter5@mgh.harvard.edu
-# Please email us directly if you
+# Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-07-08
+# Last updated: 2025-08-27
 
 # Package development
 # - To update man pages
 #   devtools::document()
-
-# Improve helper functions for defining inputs for fastLink
-# Add option to set fastLink linkage across diff. schools to FALSE
-# Add a function to trim PHI
-# Add automatic detection of 8->9 and tweak inputs appropriate
-# Add step for fastLink where ensure numeric variables
 
 #' School-Wide Assessment Analysis Preparation
 #'

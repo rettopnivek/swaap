@@ -1,21 +1,32 @@
 # Functions to recode variables
-# Written by Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Written by...
+#   Kevin Potter
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-08
+# Last updated: 2025-10-10
 
 # Table of contents
 # B) swaap_recode.base
 # C) swaap_recode.contact
 # D) swaap_recode.demographics
 # E) swaap_recode.experience
+# I) swaap_recode.intermittent
+#   I.1) Close connections [2024]
+#   I.2) Language [2023-2024]
 # I) swaap_recode.inventories
-#   I.1) AUDIT
-#   I.2) ADDI
-#   I.3) ERS
+#   I.1) ADDI
+#   I.2) APSS
+#   I.3) AUDIT
+#   I.4) ERS
+#   I.5) PHQ-4
 # L) swaap_recode.linking
 # M) swaap_recode.misc
+#   M.1) Prescribed medication [2022+]
+#   M.2) Help-seeking [2020+]
 # Q) swaap_recode.quality
 
 #### B) swaap_recode.base ####
@@ -81,6 +92,136 @@ swaap_recode.base <- function(
   if ( 'SSS.DTM.SurveyEnd' %in% chr_columns )
     dtf_data$SSS.DTT.SurveyEnd <-
       dtf_data$SSS.DTM.SurveyEnd
+
+  return( dtf_data )
+}
+
+#### C) swaap_recode.character ####
+#' Recode Character Value Columns to Integer
+#'
+#' Converts columns of character strings to
+#' integers for compatibility with other
+#' statistical software programs. Also
+#' converts logical variables (\code{TRUE/FALSE})
+#' to (\code{1/0}) instead.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#' @param lgc_mapping A logical value; if
+#'   \code{TRUE} instead returns a data
+#'   frame with the mapping between
+#'   character and numeric values for
+#'   each changed variable.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A data frame with variables with
+#' the data type \code{CHR} (character strings)
+#' renamed to \code{INT} (integer values), or
+#' a data frame reporting on the mapping from
+#' original character strings to numeric values.
+#'
+#' @export
+
+swaap_recode.character <- function(
+    dtf_data,
+    lgc_mapping = FALSE ) {
+
+  # Initialize variables
+  chr_columns <- colnames(dtf_data)
+  chr_remove <- c()
+  dtf_mapping <- c()
+
+  fun_unique <- function(x) {
+
+    vec_unq <- unique(x)
+    vec_unq <- vec_unq[ !is.na(vec_unq) ]
+
+    return( vec_unq[1] )
+  }
+
+  # Loop over columns
+  for ( k in seq_along(chr_columns) ) {
+
+    lgc_chr <- substr(chr_columns[k], 5, 7 ) %in% 'CHR'
+
+    # Check if character string
+    if (lgc_chr) {
+
+      # Check if integer version of variable already exists
+      chr_int <- strsplit(
+        chr_columns[k], split = '.CHR.', fixed = TRUE
+      ) |> unlist() |> paste( collapse = '.INT.' )
+
+      # Update columns to remove
+      chr_remove <- c( chr_remove, chr_columns[k] )
+
+      # Create integer version
+      if ( !chr_int %in% chr_columns ) {
+
+        # Copy column
+        chr_values <- dtf_data[[ chr_columns[k] ]]
+
+        dtf_data[[ chr_int ]] <- as.numeric(
+          as.factor( chr_values )
+        )
+
+        # Close 'Create integer version'
+      }
+
+      # If few enough distinct values
+      if ( dplyr::n_distinct(dtf_data[[ chr_columns[k] ]]) <= 70 &
+           lgc_mapping ) {
+
+        dtf_mapping_cur <- dtf_data |>
+          dplyr::group_by_at(
+            chr_columns[k]
+          ) |>
+          dplyr::summarise_at(
+            chr_int, fun_unique
+          ) |>
+          data.frame()
+        colnames(dtf_mapping_cur) <- c(
+          'Labels', 'Values'
+        )
+        dtf_mapping_cur$Variable <- chr_int
+
+        dtf_mapping <- rbind(
+          dtf_mapping,
+          dtf_mapping_cur
+        )
+
+        # Close 'If few enough distinct values'
+      }
+
+      # Close 'Check if character string'
+    }
+
+    lgc_lgc <- substr(chr_columns[k], 5, 7 ) %in% 'LGC'
+
+    # Logical variable
+    if ( lgc_lgc ) {
+
+      dtf_data[[ chr_columns[k] ]] <- as.numeric(
+        dtf_data[[ chr_columns[k] ]]
+      )
+
+      # Close 'Logical variable'
+    }
+
+    # Close 'Loop over columns'
+  }
+
+  # If any columns to remove
+  if ( length(chr_remove) > 0 ) {
+
+    dtf_data <- dtf_data[, !colnames(dtf_data) %in% chr_remove]
+
+    # Close 'If any columns to remove'
+  }
+
+  if (lgc_mapping) return( dtf_mapping )
 
   return( dtf_data )
 }
@@ -260,8 +401,9 @@ swaap_recode.demographics <- function(
 #' \code{'SBJ.LGC.Experience.PlaySports'},
 #' \code{'SBJ.LGC.Experience.SuspensionsAny'},
 #' \code{'SBJ.LGC.Experience.SuspensionsDrug'},
-#' \code{'SBJ.CHR.Experience.GradesInSchool'}, and
-#' \code{'SBJ.INT.Experience.GradesInSchool'}.
+#' \code{'SBJ.CHR.Experience.GradesInSchool'},
+#' \code{'SBJ.INT.Experience.GradesInSchool'}, and
+#' \code{'SBJ.CHR.Experience.IEP'}.
 #'
 #' @export
 
@@ -337,6 +479,98 @@ swaap_recode.experience <- function(
     # Close 'Recode item for class performance'
   }
 
+  # Recode item for IEP [Individualized education program]
+  if ( 'INV.INT.IEP.Member' %in% chr_columns ) {
+
+    dtf_data$SBJ.CHR.Experience.IEP <- c(
+      'No',
+      'Yes',
+      'Not sure'
+    )[dtf_data$INV.INT.IEP.Member+1]
+
+    # Close 'Recode item for IEP [Individualized education program]'
+  }
+
+  return( dtf_data )
+}
+
+#### I) swaap_recode.intermittent ####
+#' Recode Variables at Intermittent Time Points
+#'
+#' Renames variables that occurred at
+#' intermittent time points.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A data frame with the additional variables
+#' \code{'SBJ.LGC.CloseConnection.<Type>'},
+#' \code{'SBJ.INT.CloseConnection.Happiness'},
+#' \code{'SBJ.LGC.FirstLanguage.English'} and
+#' \code{'SBJ.LGC.HomeLanguage.English'}.
+#'
+#' @export
+
+swaap_recode.intermittent <- function(
+    dtf_data ) {
+
+  chr_columns <- colnames(dtf_data)
+
+  #### I.1) Close connections [2024] ####
+
+  chr_terms <- c(
+    Friend = 'Friend',
+    Adult.Parent = 'Parent',
+    Adult.Teacher = 'Teacher'
+  )
+
+  # Loop over terms
+  for ( i in seq_along(chr_terms) ) {
+
+    chr_old <- paste0( 'INV.INT.CloseConnection.', names(chr_terms)[i] )
+    chr_new <- paste0( 'SBJ.LGC.CloseConnection.', chr_terms[i] )
+
+    if ( chr_old %in% chr_columns )
+      dtf_data[[ chr_new ]] <- as.logical( dtf_data[[ chr_old ]] )
+
+    # Close 'Loop over terms'
+  }
+
+  # Add variable on happiness with support
+  if ( 'INV.FCT.Support.Happiness' %in% chr_columns ) {
+
+    dtf_data$SBJ.INT.CloseConnection.Happiness <- as.numeric(
+      factor(
+        dtf_data$INV.FCT.Support.Happiness,
+        levels = c(
+          "Very unhappy",
+          "Unhappy",
+          "Neutral (Not unhappy or happy)",
+          "Happy",
+          "Very happy"
+        )
+      )
+    )
+    dtf_data$SBJ.CHR.CloseConnection.Happiness <- as.character(
+      dtf_data$INV.FCT.Support.Happiness
+    )
+
+    # Close 'Add variable on happiness with support'
+  }
+
+  #### I.2) Language [2023-2024] ####
+
+  if ( 'SBJ.LGL.FirstLanguage.English' %in% chr_columns )
+    dtf_data$SBJ.LGC.FirstLanguage.English <-
+      dtf_data$SBJ.LGL.FirstLanguage.English
+
+  if ( 'SBJ.LGL.HomeLanguage.English' %in% chr_columns )
+    dtf_data$SBJ.LGC.HomeLanguage.English <-
+      dtf_data$SBJ.LGL.HomeLanguage.English
+
   return( dtf_data )
 }
 
@@ -355,11 +589,18 @@ swaap_recode.experience <- function(
 #' \code{'INV.INT.AUDIT.Total'},
 #' \code{'INV.INT.AUDIT.Q1.<Label>'} to
 #' \code{'INV.INT.AUDIT.Q10.<Label>'},
-#' \code{'INV.INT.ADDI.Total'},
+#' \code{'INV.CHR.AUDIT.CutOffs'},
+#' \code{'INV.INT.ADDI.D.Total'},
+#' \code{'INV.INT.ADDI.U.Total'},
 #' \code{'INV.INT.ADDI.Q1.<Label>'} to
 #' \code{'INV.INT.ADDI.Q15.<Label>'},
+#' \code{'INV.INT.ERS.Persistence'},
+#' \code{'INV.INT.ERS.Sensitivity'},
+#' \code{'INV.INT.ERS.Intensity'},
 #' \code{'INV.INT.ERS.Q01.<Subscale>.<Label>'} to
-#' \code{'INV.INT.ERS.Q21.<Subscale>.<Label>'}.
+#' \code{'INV.INT.ERS.Q21.<Subscale>.<Label>'},
+#' \code{'INV.CHR.APSS.CutOffs'},
+#' \code{'INV.LGC.APSS.AtRisk'}.
 #'
 #' @export
 
@@ -368,42 +609,7 @@ swaap_recode.inventories <- function(
 
   chr_columns <- colnames(dtf_data)
 
-  #### I.1) AUDIT ####
-
-  if ( 'INV.INT.SUB.Alcohol.AUDIT.Total' %in% chr_columns )
-    dtf_data$INV.INT.AUDIT.Total <-
-    dtf_data$INV.INT.SUB.Alcohol.AUDIT.Total
-
-  chr_items <- paste0(
-    'INV.INT.SUB.Alcohol.AUDIT',
-    1:10
-  )
-  chr_labels <- c(
-    'Frequency',
-    'Drinks',
-    'Binge',
-    'Stopping',
-    'Failure',
-    'Morning',
-    'Guilt',
-    'Memory',
-    'Injured',
-    'Concern'
-  )
-
-  # Loop over items
-  for ( i in seq_along(chr_items) ) {
-
-    if ( chr_items[i] %in% chr_columns )
-      dtf_data[[
-        paste0( 'INV.INT.AUDIT.Q', i, '.', chr_labels[i] )
-      ]] <-
-      dtf_data[[ chr_items[i] ]]
-
-    # Close 'Loop over items'
-  }
-
-  #### I.2) ADDI ####
+  #### I.1) ADDI ####
 
   chr_disc <- paste0(
     'INV.LGL.ADDI.Q',
@@ -454,8 +660,7 @@ swaap_recode.inventories <- function(
 
   if ( all(chr_items_new %in% colnames(dtf_data)) )
     dtf_data$INV.INT.ADDI.D.Total <- rowSums(
-      dtf_data[, chr_items_new],
-      na.rm = TRUE
+      dtf_data[, chr_items_new]
     )
 
   chr_items_new <-
@@ -463,11 +668,78 @@ swaap_recode.inventories <- function(
 
   if ( all(chr_items_new %in% colnames(dtf_data)) )
     dtf_data$INV.INT.ADDI.U.Total <- rowSums(
-      dtf_data[, chr_items_new],
-      na.rm = TRUE
+      dtf_data[, chr_items_new]
     )
 
-  #### I.3) ERS ####
+  #### I.2) APSS ####
+
+  dtf_data$INV.CHR.APSS.CutOffs <- NA
+  dtf_data$INV.CHR.APSS.CutOffs[
+    dtf_data$INV.DBL.APSS.Total %in% c(
+      0, .5, 1, 1.5
+    )
+  ] <- '0-1.5 = Not at risk'
+  dtf_data$INV.CHR.APSS.CutOffs[
+    dtf_data$INV.DBL.APSS.Total %in% c(
+      2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7
+    )
+  ] <- '2-7 = At risk'
+  dtf_data$INV.LGC.APSS.AtRisk <-
+    dtf_data$INV.CHR.APSS.CutOffs == '2-7 = At risk'
+
+  #### I.3) AUDIT ####
+
+  if ( 'INV.INT.SUB.Alcohol.AUDIT.Total' %in% chr_columns )
+    dtf_data$INV.INT.AUDIT.Total <-
+    dtf_data$INV.INT.SUB.Alcohol.AUDIT.Total
+
+  chr_items <- paste0(
+    'INV.INT.SUB.Alcohol.AUDIT',
+    1:10
+  )
+  chr_labels <- c(
+    'Frequency',
+    'Drinks',
+    'Binge',
+    'Stopping',
+    'Failure',
+    'Morning',
+    'Guilt',
+    'Memory',
+    'Injured',
+    'Concern'
+  )
+
+  # Loop over items
+  for ( i in seq_along(chr_items) ) {
+
+    if ( chr_items[i] %in% chr_columns )
+      dtf_data[[
+        paste0( 'INV.INT.AUDIT.Q', i, '.', chr_labels[i] )
+      ]] <-
+        dtf_data[[ chr_items[i] ]]
+
+    # Close 'Loop over items'
+  }
+
+  dtf_data$INV.CHR.AUDIT.CutOffs <- NA
+  dtf_data$INV.CHR.AUDIT.CutOffs[
+    dtf_data$INV.INT.AUDIT.Total %in% 0
+  ] <- '0 = Abstainer'
+  dtf_data$INV.CHR.AUDIT.CutOffs[
+    dtf_data$INV.INT.AUDIT.Total %in% 1:7
+  ] <- '1-7 = Low risk'
+  dtf_data$INV.CHR.AUDIT.CutOffs[
+    dtf_data$INV.INT.AUDIT.Total %in% 8:15
+  ] <- '8-15 = Hazardous'
+  dtf_data$INV.CHR.AUDIT.CutOffs[
+    dtf_data$INV.INT.AUDIT.Total %in% 16:19
+  ] <- '16-19 = Harmful'
+  dtf_data$INV.CHR.AUDIT.CutOffs[
+    dtf_data$INV.INT.AUDIT.Total %in% 20:40
+  ] <- '20-40 = High risk'
+
+  #### I.4) ERS ####
 
   chr_items <- c(
     "INV.INT.ERS.Q01.Persistence1",
@@ -528,6 +800,54 @@ swaap_recode.inventories <- function(
     # Close 'Loop over items'
   }
 
+  chr_items_new <-
+    paste0( 'INV.INT.ERS.Q', 1:21, '.', chr_labels )
+
+  int_subscale <- which( grepl( 'P.', chr_labels, fixed = TRUE ) )
+  if ( all(chr_items_new[int_subscale] %in% colnames(dtf_data)) )
+    dtf_data$INV.INT.ERS.Persistence <- rowSums(
+      dtf_data[, chr_items_new[int_subscale]]
+    )
+
+  int_subscale <- which( grepl( 'S.', chr_labels, fixed = TRUE ) )
+  if ( all(chr_items_new[int_subscale] %in% colnames(dtf_data)) )
+    dtf_data$INV.INT.ERS.Sensitivity <- rowSums(
+      dtf_data[, chr_items_new[int_subscale]]
+    )
+
+  int_subscale <- which( grepl( 'I.', chr_labels, fixed = TRUE ) )
+  if ( all(chr_items_new[int_subscale] %in% colnames(dtf_data)) )
+    dtf_data$INV.INT.ERS.Intensity <- rowSums(
+      dtf_data[, chr_items_new[int_subscale]]
+    )
+
+  #### I.5) PHQ-4 ####
+
+  dtf_data$INV.CHR.PHQ4.CutOffs <- NA
+  dtf_data$INV.CHR.PHQ4.CutOffs[
+    dtf_data$INV.INT.PHQ4.Total >= 0 |
+    dtf_data$INV.INT.PHQ4.Total < 2
+  ] <- 'Normal'
+  dtf_data$INV.CHR.PHQ4.CutOffs[
+    dtf_data$INV.INT.PHQ4.Total >= 3 |
+    dtf_data$INV.INT.PHQ4.Total < 6
+  ] <- 'Mild distress'
+  dtf_data$INV.CHR.PHQ4.CutOffs[
+    dtf_data$INV.INT.PHQ4.Total >= 6 |
+    dtf_data$INV.INT.PHQ4.Total < 9
+  ] <- 'Moderate distress'
+  dtf_data$INV.CHR.PHQ4.CutOffs[
+    dtf_data$INV.INT.PHQ4.Total >= 9 |
+    dtf_data$INV.INT.PHQ4.Total < 13
+  ] <- 'High distress'
+  dtf_data$INV.LGC.PHQ4.Distress <-
+    dtf_data$INV.INT.PHQ4.Anxiety >= 3 |
+    dtf_data$INV.INT.PHQ4.Depression >= 3
+  dtf_data$INV.LGC.PHQ4.Anxiety <-
+    dtf_data$INV.INT.PHQ4.Anxiety >= 3
+  dtf_data$INV.LGC.PHQ4.Depression <-
+    dtf_data$INV.INT.PHQ4.Depression >= 3
+
   return( dtf_data )
 }
 
@@ -543,6 +863,7 @@ swaap_recode.inventories <- function(
 #' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
+#' \code{'SBJ.INT.Link.DistrictCode'},
 #' \code{'SBJ.INT.Link.SchoolCode'},
 #' \code{'SBJ.INT.Link.SchoolID'},
 #' \code{'SBJ.CHR.Link.Sex'},
@@ -566,6 +887,10 @@ swaap_recode.linking <- function(
     dtf_data ) {
 
   chr_columns <- colnames(dtf_data)
+
+  if ( 'SSS.INT.District.Code' %in% chr_columns )
+    dtf_data$SBJ.INT.Link.DistrictCode <-
+      dtf_data$SSS.INT.District.Code
 
   if ( 'SSS.INT.School.Code' %in% chr_columns )
     dtf_data$SBJ.INT.Link.SchoolCode <-
@@ -791,8 +1116,7 @@ swaap_recode.linking <- function(
 #' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
-#' \code{'SBJ.CHR.PrescribedMedicationHealth'},
-#' \code{'SBJ.LGC.CloseConnection.<Type>'}, and
+#' \code{'SBJ.CHR.PrescribedMedicationHealth'}, and
 #' \code{'SBJ.LGC.SoughtHelp.<Type>'}.
 #'
 #' @export
@@ -802,6 +1126,10 @@ swaap_recode.misc <- function(
 
   chr_columns <- colnames(dtf_data)
 
+  #### M.1) Prescribed medication [2022+] ####
+
+  # Ongoing: Added 2022
+
   if ( 'INV.INT.Health.Medication' %in% chr_columns )
     dtf_data$SBJ.CHR.PrescribedMedicationHealth <- c(
       'No',
@@ -809,23 +1137,7 @@ swaap_recode.misc <- function(
       'Not sure'
     )[ dtf_data$INV.INT.Health.Medication + 1 ]
 
-  chr_terms <- c(
-    Friend = 'Friend',
-    Adult.Parent = 'Parent',
-    Adult.Teacher = 'Teacher'
-  )
-
-  # Loop over terms
-  for ( i in seq_along(chr_terms) ) {
-
-    chr_old <- paste0( 'INV.INT.CloseConnection.', names(chr_terms)[i] )
-    chr_new <- paste0( 'SBJ.LGC.CloseConnection.', chr_terms[i] )
-
-    if ( chr_old %in% chr_columns )
-      dtf_data[[ chr_new ]] <- as.logical( dtf_data[[ chr_old ]] )
-
-    # Close 'Loop over terms'
-  }
+  #### M.2) Help-seeking [2020+] ####
 
   chr_terms <- c(
     'None', # 0
@@ -841,13 +1153,15 @@ swaap_recode.misc <- function(
     'SocialMediaSupport', # 10
     'EmergencyServices', # 11
     'RehabCenter', # 12
-    'NotListed' # 13
+    'NotListed', # 13
+    'Nurse', # 14
+    'YouthWellnessCoach' # 15
   )
 
   # Loop over terms
   for ( i in seq_along(chr_terms) ) {
 
-    chr_old <- paste0( 'INV.LGL.HelpSeeking', (0:13)[i] )
+    chr_old <- paste0( 'INV.LGL.HelpSeeking', (0:15)[i] )
     chr_new <- paste0( 'SBJ.LGC.SoughtHelp.', chr_terms[i] )
 
     if ( chr_old %in% chr_columns )

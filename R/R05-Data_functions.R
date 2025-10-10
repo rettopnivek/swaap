@@ -1,9 +1,13 @@
 # Misc. data processing functions
-# Written by Kevin Potter
-# email: kpotter5@mgh.harvard.edu
+# Written by...
+#   Kevin Potter
+# Maintained by...
+#   Kevin Potter
+# Email:
+#   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-07-03
+# Last updated: 2025-08-23
 
 # Table of contents
 # 1) swaap_data.merge
@@ -102,6 +106,7 @@ swaap_data.merge <- function(
     message( "  'contact'," )
     message( "  'demographics'," )
     message( "  'experience'," )
+    message( "  'intermittent'," )
     message( "  'inventories'," )
     message( "  'linking'," )
     message( "  'misc'," )
@@ -115,6 +120,7 @@ swaap_data.merge <- function(
     message( "  'contact'," )
     message( "  'demographics'," )
     message( "  'experience'," )
+    message( "  'intermittent'," )
     message( "  'inventories'" )
     message( "  'linking'," )
     message( "  'misc'," )
@@ -164,6 +170,7 @@ swaap_data.merge <- function(
       'swaap_recode.contact',
       'swaap_recode.demographics',
       'swaap_recode.experience',
+      'swaap_recode.intermittent',
       'swaap_recode.inventories',
       'swaap_recode.linking',
       'swaap_recode.misc',
@@ -194,6 +201,7 @@ swaap_data.merge <- function(
       'swaap_select.substances',
       'swaap_select.suicidality',
       'swaap_select.experience',
+      'swaap_select.intermittent',
       'swaap_select.inventories',
       'swaap_select.quality'
     )
@@ -354,32 +362,13 @@ swaap_data.merge <- function(
         lst_args$lgc_items <- lgc_items
 
       # Special case for linking items
-      if ( 'swaap_select.linking' %in% chr_select[j] ) {
+      if ( 'swaap_select.linking' %in% chr_select[j] )
+        lst_args$lgc_all <- TRUE
 
-        # Standard linking items
-        chr_columns <- do.call(
-          chr_select[j],
-          lst_args
-        )
-
-        # Linking items for fastLink
-        lst_args$chr_input <- chr_columns
-        lst_args$lgc_fastLink <- TRUE
-        chr_columns <- do.call(
-          chr_select[j],
-          lst_args
-        )
-
-        # Close 'Special case for linking items'
-      } else {
-
-        chr_columns <- do.call(
-          chr_select[j],
-          lst_args
-        )
-
-        # Close else for 'Special case for linking items'
-      }
+      chr_columns <- do.call(
+        chr_select[j],
+        lst_args
+      )
 
       # Close 'Loop over select functions'
     }
@@ -862,6 +851,10 @@ swaap_data.internal.copy_attr <- function(
 #' @param chr_data A character vector, the data sets
 #'   to copy, in the format \code{'<Year> <Semester>'}
 #'   (e.g., \code{c( '2023 Fall', '2024 Fall' )}).
+#'   Can also be either \code{'Merged Linked Data'} or
+#'   \code{'CAM External Share'}, in which case
+#'   pre-prepared merged and linked data will be downloaded
+#'   instead.
 #' @param lgc_complete A logical value; if \code{TRUE}
 #'   downloads the full data set that includes
 #'   confidential patient health information
@@ -903,6 +896,154 @@ swaap_data.download <- function(
   chr_path_part_1 <- paste0(
     chr_dropbox, "/", chr_CAM
   )
+
+  chr_special <- c(
+    'Merged Linked Data',
+    'CAM External Share'
+  )
+
+  # Special cases of pre-prepared data
+  if ( all( chr_data %in% chr_special ) ) {
+
+    # Merged linked data
+    if ( chr_data %in% chr_special[1] ) {
+
+      chr_folder <- paste0(
+        chr_dropbox,
+        "/",
+        "CAM Data/SWA-2015/Output/Merged Linked Data/Output"
+      )
+
+      chr_files <- dir(
+        chr_folder
+      )
+
+      if (!lgc_complete)
+        stop( paste0( 'Cannot download data as it includes ',
+                      'confidential patient health info' ) )
+
+      if (!lgc_silent)
+        warning( 'Complete data includes confidential patient health info' )
+
+      chr_files <- chr_files[
+        !chr_files %in% 'Archive'
+      ]
+
+      # Copy to new location
+      if ( !is.null( chr_copy_to ) ) {
+
+        # Sub-folder
+        if ( chr_copy_to != '' ) {
+
+          chr_path_new <- paste0(
+            chr_copy_to, '/', chr_files
+          )
+
+          # Close 'Sub-folder'
+        } else {
+
+          chr_path_new <- chr_files
+
+          # Close else for 'Sub-folder'
+        }
+
+        lgc_success <- file.copy(
+          from = paste0( chr_folder, '/', chr_files ),
+          to = chr_path_new
+        )
+
+        if (!lgc_success)
+          stop( 'Failed to copy to new location' )
+
+        if (!lgc_silent)
+          message( 'File copied to specified location' )
+
+        # Close 'Copy to new location'
+      }
+
+      dtf_output <- data.frame(
+        Year = '2022 - 2024',
+        Semester = 'Fall',
+        Full = paste0( chr_folder, '/', chr_files ),
+        Partial = chr_files,
+        New = '',
+        PHI = lgc_complete
+      )
+
+      if ( !is.null( chr_copy_to ) )
+        dtf_output$New <- chr_path_new
+
+      # Close 'Merged linked data'
+    }
+
+    # Data to share externally
+    if ( chr_data %in% chr_special[2] ) {
+
+      chr_folder <- paste0(
+        chr_dropbox,
+        "/",
+        "CAM External Share/SWA-2015/Data to Share"
+      )
+
+      chr_files <- dir(
+        chr_folder
+      )
+
+      chr_files <- chr_files[
+        !chr_files %in% 'Archive'
+      ]
+
+      # Copy to new location
+      if ( !is.null( chr_copy_to ) ) {
+
+        # Sub-folder
+        if ( chr_copy_to != '' ) {
+
+          chr_path_new <- paste0(
+            chr_copy_to, '/', chr_files
+          )
+
+          # Close 'Sub-folder'
+        } else {
+
+          chr_path_new <- chr_files
+
+          # Close else for 'Sub-folder'
+        }
+
+        lgc_success <- file.copy(
+          from = paste0( chr_folder, '/', chr_files ),
+          to = chr_path_new
+        )
+
+        if (!lgc_success)
+          stop( 'Failed to copy to new location' )
+
+        if (!lgc_silent)
+          message( 'File copied to specified location' )
+
+        # Close 'Copy to new location'
+      }
+
+      dtf_output <- data.frame(
+        Year = '2022 - 2024',
+        Semester = 'Fall',
+        Full = paste0( chr_folder, '/', chr_files ),
+        Partial = chr_files,
+        New = '',
+        PHI = FALSE
+      )
+
+      if ( !is.null( chr_copy_to ) )
+        dtf_output$New <- chr_path_new
+
+      # Close 'Data to share externally'
+    }
+
+    return( dtf_output )
+
+    # Close 'Special cases of pre-prepared data'
+  }
 
   dtf_output <- data.frame(
     Year = rep( '', length(chr_data) ),
@@ -1771,9 +1912,7 @@ swaap_data.deidentified <- function(
     'IDN.CHR.LocallyAssignedSchool.ID',
     'IDN.CHR.LAS.ID',
     swaap::swaap_select.contact(),
-    swaap::swaap_select.linking(),
-    swaap::swaap_select.linking(lgc_original = TRUE),
-    swaap::swaap_select.linking(lgc_fastLink = TRUE),
+    swaap::swaap_select.linking(lgc_all = TRUE),
     chr_columns[
       grepl( '.Link.', chr_columns, fixed = TRUE )
     ],
