@@ -7,7 +7,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-10-10
+# Last updated: 2025-10-14
 
 # Table of contents
 # B) swaap_recode.base
@@ -386,6 +386,67 @@ swaap_recode.demographics <- function(
   return( dtf_data )
 }
 
+#### D) swaap_recode.discrimination ####
+#' Recode Discrimination Items
+#'
+#' Recodes discrimination items.
+#'
+#' @param dtf_data A data frame, assumed to
+#'   follow the standardized format for the
+#'   school-wide assessment data.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A data frame with the additional variables
+#' \code{'INV.INT.DISC.Q1.Gender'},
+#' \code{'INV.INT.DISC.Q2.Sexuality'},
+#' \code{'INV.INT.DISC.Q3.Religion'},
+#' \code{'INV.INT.DISC.Q4.Disability'},
+#' \code{'INV.INT.DISC.Q5.Money'}, and
+#' \code{'INV.INT.DISC.Q6.Other'}.
+#'
+#' @export
+
+swaap_recode.discrimination <- function(
+    dtf_data ) {
+
+  chr_columns <- colnames(dtf_data)
+
+  chr_questions <- c(
+    'Gender',
+    'Sexuality',
+    'Religion',
+    'Disability',
+    'Money',
+    'Other'
+  )
+
+  # Loop over questions
+  for ( i in seq_along(chr_questions) ) {
+
+    chr_current <-
+      paste0( 'INV.INT.DISC.', chr_questions[i], '.Q', i )
+
+    # Question found
+    if ( chr_current %in% chr_columns ) {
+
+      dtf_data[[
+        paste0(
+          'INV.INT.DISC.',
+          'Q', i, '.',
+          chr_questions[i]
+        )
+      ]] <- dtf_data[[ chr_current ]]
+
+      # Close 'Question found'
+    }
+
+    # Close 'Loop over questions'
+  }
+
+  return(dtf_data)
+}
+
 #### E) swaap_recode.experience ####
 #' Recode School Experience Items
 #'
@@ -401,6 +462,7 @@ swaap_recode.demographics <- function(
 #' \code{'SBJ.LGC.Experience.PlaySports'},
 #' \code{'SBJ.LGC.Experience.SuspensionsAny'},
 #' \code{'SBJ.LGC.Experience.SuspensionsDrug'},
+#' \code{'SBJ.LGC.Experience.UsedDrugsAtSchool'},
 #' \code{'SBJ.CHR.Experience.GradesInSchool'},
 #' \code{'SBJ.INT.Experience.GradesInSchool'}, and
 #' \code{'SBJ.CHR.Experience.IEP'}.
@@ -437,6 +499,15 @@ swaap_recode.experience <- function(
       c( FALSE, TRUE )[ dtf_data$INV.INT.SchoolXP.Suspension.Drug + 1 ]
 
     # Close 'Recode item for suspensions [Drug]'
+  }
+
+  # Recode item for using substances on school grounds
+  if ( 'INV.INT.SchoolXP.Substance' %in% chr_columns ) {
+
+    dtf_data$SBJ.LGC.Experience.UsedDrugsAtSchool <-
+      dtf_data$INV.INT.SchoolXP.Substance == 1
+
+    # Close 'Recode item for using substances on school grounds'
   }
 
   # Recode item for class performance
@@ -570,6 +641,61 @@ swaap_recode.intermittent <- function(
   if ( 'SBJ.LGL.HomeLanguage.English' %in% chr_columns )
     dtf_data$SBJ.LGC.HomeLanguage.English <-
       dtf_data$SBJ.LGL.HomeLanguage.English
+
+  #### I.3) Sleep [2024] ####
+
+  if ( 'INV.FCT.SchoolDay.WakeupTime' %in% chr_columns )
+    dtf_data$SBJ.CHR.Sleep.TimeWakeUp <-
+      dtf_data$INV.FCT.SchoolDay.WakeupTime
+
+  if ( 'INV.FCT.SchoolDay.SleepTime' %in% chr_columns )
+    dtf_data$SBJ.CHR.Sleep.TimeGoToBed <-
+      dtf_data$INV.FCT.SchoolDay.SleepTime
+
+  if ( 'INV.INT.SchoolDay.Sleepiness' %in% chr_columns )
+    dtf_data$SBJ.INT.Sleep.TirednessDuringDay <-
+      dtf_data$INV.INT.SchoolDay.Sleepiness
+
+  #### I.4) Climate change [2024] ####
+
+  if ( 'INV.INT.ClimateChange.Worries' %in% chr_columns )
+    dtf_data$SBJ.LGC.ClimateChange.Worried <- c(
+      FALSE, TRUE
+    )[ dtf_data$INV.INT.ClimateChange.Worries + 1 ]
+
+  # Recode impact on daily life
+  if ( 'INV.FCT.ClimateChange.Worries.DailyLife' %in% chr_columns ) {
+
+    dtf_data$SBJ.CHR.ClimateChange.ImpactOnDailyLife <-
+      dtf_data$INV.FCT.ClimateChange.Worries.DailyLife
+
+    if ( 'INV.INT.ClimateChange.Worries' %in% chr_columns )
+      dtf_data$SBJ.CHR.ClimateChange.ImpactOnDailyLife[
+        dtf_data$SBJ.LGC.ClimateChange.Worried %in% FALSE
+      ] <- 'Not worried in first place'
+
+    # Close 'Recode impact on daily life'
+  }
+
+  # Recode coping strategies
+  if ( 'INV.FCT.ClimateChange.Worries.HelpfulWays' %in% chr_columns ) {
+
+    dtf_data$SBJ.CHR.ClimateChange.CopingStrategies <-
+      dtf_data$INV.FCT.ClimateChange.Worries.HelpfulWays
+
+    if ( 'INV.INT.ClimateChange.Worries' %in% chr_columns )
+      dtf_data$SBJ.CHR.ClimateChange.CopingStrategies[
+        dtf_data$SBJ.LGC.ClimateChange.Worried %in% FALSE
+      ] <- 'Not worried in first place'
+
+    # Close 'Recode coping strategies'
+  }
+
+  #### I.5) Social media [2024] ####
+
+  if ( 'INV.FCT.SocialMedia.Use.Frequency' %in% chr_columns )
+    dtf_data$SBJ.CHR.SocialMediaUseFrequency <-
+      dtf_data$INV.FCT.SocialMedia.Use.Frequency
 
   return( dtf_data )
 }
@@ -825,20 +951,16 @@ swaap_recode.inventories <- function(
 
   dtf_data$INV.CHR.PHQ4.CutOffs <- NA
   dtf_data$INV.CHR.PHQ4.CutOffs[
-    dtf_data$INV.INT.PHQ4.Total >= 0 |
-    dtf_data$INV.INT.PHQ4.Total < 2
+    dtf_data$INV.INT.PHQ4.Total %in% 0:2
   ] <- 'Normal'
   dtf_data$INV.CHR.PHQ4.CutOffs[
-    dtf_data$INV.INT.PHQ4.Total >= 3 |
-    dtf_data$INV.INT.PHQ4.Total < 6
+    dtf_data$INV.INT.PHQ4.Total %in% 3:5
   ] <- 'Mild distress'
   dtf_data$INV.CHR.PHQ4.CutOffs[
-    dtf_data$INV.INT.PHQ4.Total >= 6 |
-    dtf_data$INV.INT.PHQ4.Total < 9
+    dtf_data$INV.INT.PHQ4.Total %in% 6:8
   ] <- 'Moderate distress'
   dtf_data$INV.CHR.PHQ4.CutOffs[
-    dtf_data$INV.INT.PHQ4.Total >= 9 |
-    dtf_data$INV.INT.PHQ4.Total < 13
+    dtf_data$INV.INT.PHQ4.Total %in% 9:12
   ] <- 'High distress'
   dtf_data$INV.LGC.PHQ4.Distress <-
     dtf_data$INV.INT.PHQ4.Anxiety >= 3 |
@@ -1170,6 +1292,38 @@ swaap_recode.misc <- function(
 
     # Close 'Loop over terms'
   }
+
+  # Identify which variables exist
+  lgc_present <- chr_terms %in% colnames(dtf_data)
+
+  # Ensure consistency
+  if ( lgc_present[1] & any(lgc_present[-1]) ) {
+
+    chr_present <- chr_terms[lgc_present][-1]
+
+    lgc_none <- dtf_data$SBJ.LGC.SoughtHelp.None %in% TRUE
+
+    lgc_any <- dtf_data[lgc_none, chr_present] |> apply(
+      1, function(x) any( x %in% TRUE )
+    )
+
+    dtf_data$SBJ.LGC.SoughtHelp.None[lgc_none] <-
+      !lgc_any
+
+    # Close 'Ensure consistency'
+  }
+
+  if ( 'INV.CHR.HelpSeeking.Other' %in% chr_columns )
+    dtf_data$SBJ.CHR.SoughtHelp.Other <-
+      dtf_data$INV.CHR.HelpSeeking.Other
+
+  if ( 'INV.FCT.HelpSeeking.Past6Months.Frequency' %in% chr_columns )
+    dtf_data$SBJ.CHR.SoughtHelp.FrequencyPast6Months <-
+      dtf_data$INV.FCT.HelpSeeking.Past6Months.Frequency
+
+  if ( 'INV.FCT.HelpSeeking.Past6Months.Helpfulness' %in% chr_columns )
+    dtf_data$SBJ.CHR.SoughtHelp.HelpfulnessPast6Months <-
+      dtf_data$INV.FCT.HelpSeeking.Past6Months.Helpfulness
 
   return( dtf_data )
 }

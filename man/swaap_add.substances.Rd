@@ -15,7 +15,13 @@ school-wide assessment data.}
 the substance as originally labeled (either
 \code{'Alcohol'}, \code{'Cannabis'},
 \code{'Vapes'}, \code{'Cigarettes'},
-\code{'Cigars'}, \code{'Smokeless'}}
+\code{'Cigars'}, \code{'Smokeless'}.
+Special processing done if \code{'Other'}
+(creates a lifetime use variable only and
+collapses across the 8 substance types) or
+\code{'Quit'} (creates 3 variables encoding
+desire to quit alcohol, cannabis, and vapes
+respectively).}
 }
 \value{
 A data frame with additional

@@ -2865,7 +2865,9 @@ swaap_link.input.combos <- function(
         stop( chr_error )
 
       lgc_indices_match <-
-        all( unique( unlist( lst_combos ) ) %in% seq_along(lst_items[[s]] ) )
+        all(
+          unique( unlist( lst_combos[[s]] ) ) %in% seq_along(lst_items[[s]] )
+        )
 
       # Confirm that indices correspond to items
       if ( !lgc_indices_match )

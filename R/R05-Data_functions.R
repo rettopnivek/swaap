@@ -105,6 +105,7 @@ swaap_data.merge <- function(
     message( "  'base'," )
     message( "  'contact'," )
     message( "  'demographics'," )
+    message( "  'discrimination'," )
     message( "  'experience'," )
     message( "  'intermittent'," )
     message( "  'inventories'," )
@@ -119,6 +120,7 @@ swaap_data.merge <- function(
     message( "  'base'," )
     message( "  'contact'," )
     message( "  'demographics'," )
+    message( "  'discrimination'," )
     message( "  'experience'," )
     message( "  'intermittent'," )
     message( "  'inventories'" )
@@ -169,6 +171,7 @@ swaap_data.merge <- function(
       'swaap_recode.base',
       'swaap_recode.contact',
       'swaap_recode.demographics',
+      'swaap_recode.discrimination',
       'swaap_recode.experience',
       'swaap_recode.intermittent',
       'swaap_recode.inventories',
@@ -195,6 +198,7 @@ swaap_data.merge <- function(
       'swaap_select.base',
       'swaap_select.contact',
       'swaap_select.demographics',
+      'swaap_select.discrimination',
       'swaap_select.linking',
       'swaap_select.misc',
       'swaap_select.SBIRT',
@@ -310,6 +314,18 @@ swaap_data.merge <- function(
           chr_add[j],
           list( dtf_data = dtf_current,
                 chr_substance = 'Smokeless' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Other' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Quit' )
         )
 
         # Close 'Adding substances'

@@ -7,7 +7,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-08-20
+# Last updated 2025-10-16
 
 # Table of contents
 # 1) swaap_select
@@ -227,6 +227,48 @@ swaap_select.demographics <- function(
   return( chr_output )
 }
 
+#### D) swaap_select.discrimination ####
+#' Select Discrimination Items
+#'
+#' Function to select columns for discrimination
+#' items.
+#'
+#' @param chr_input An optional character
+#'   vector, additional columns to include.
+#'
+#' @author Kevin Potter
+#'
+#' @returns A character vector.
+#'
+#' @export
+
+swaap_select.discrimination <- function(
+    chr_input = NULL ) {
+
+  chr_add <- c(
+    'Gender',
+    'Sexuality',
+    'Religion',
+    'Disability',
+    'Money',
+    'Other'
+  )
+
+  chr_add <- paste0(
+    'INV.INT.DISC.Q', seq_along(chr_items),
+    '.', chr_add
+  )
+  # Add free text-entry item
+  chr_add <- c(
+    chr_add,
+    'INV.CHR.DISC.Other'
+  )
+
+  chr_output <- swaap_select.merge( chr_input, chr_add )
+
+  return( chr_output )
+}
+
 #### 3.E) swaap_select.experience ####
 #' Select School Experience Items
 #'
@@ -249,6 +291,7 @@ swaap_select.experience <- function(
     'SBJ.LGC.Experience.PlaySports',
     'SBJ.LGC.Experience.SuspensionsAny',
     'SBJ.LGC.Experience.SuspensionsDrug',
+    'SBJ.LGC.Experience.UsedDrugsAtSchool',
     'SBJ.CHR.Experience.GradesInSchool',
     'SBJ.INT.Experience.GradesInSchool',
     'SBJ.CHR.Experience.IEP'
@@ -286,7 +329,17 @@ swaap_select.intermittent <- function(
     'SBJ.CHR.CloseConnection.Happiness',
     #### I.2) Language [2023-2024] ####
     'SBJ.LGC.FirstLanguage.English',
-    'SBJ.LGC.HomeLanguage.English'
+    'SBJ.LGC.HomeLanguage.English',
+    #### I.3) Sleep [2024] ####
+    'SBJ.CHR.Sleep.TimeWakeUp',
+    'SBJ.CHR.Sleep.TimeGoToBed',
+    'SBJ.INT.Sleep.TirednessDuringDay',
+    #### I.4) Climate change [2024] ####
+    'SBJ.LGC.ClimateChange.Worried',
+    'SBJ.CHR.ClimateChange.ImpactOnDailyLife',
+    'SBJ.CHR.ClimateChange.CopingStrategies',
+    #### I.5) Social media [2024] ####
+    'SBJ.CHR.SocialMediaUseFrequency'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -695,7 +748,10 @@ swaap_select.misc <- function(
     paste0(
       'SBJ.LGC.SoughtHelp.',
       chr_terms
-    )
+    ),
+    'SBJ.CHR.SoughtHelp.Other',
+    'SBJ.CHR.SoughtHelp.FrequencyPast6Months',
+    'SBJ.CHR.SoughtHelp.HelpfulnessPast6Months'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -769,6 +825,9 @@ swaap_select.SBIRT <- function(
 #'
 #' @param chr_input An optional character
 #'   vector, additional columns to include.
+#' @param lgc_SBIRT A logical value; if \code{TRUE}
+#'   includes additional measures included for
+#'   schools and grades undergoing SBIRT.
 #'
 #' @author Kevin Potter
 #'
@@ -859,6 +918,23 @@ swaap_select.substances <- function(
 
     # Close 'Loop over substance abbreviations'
   }
+
+  # Add lifetime use for other substances
+  chr_add <- c(
+    chr_add,
+    'SBS.LGC.OTH.Lifetime.Any',
+    'SBS.CHR.OTH.Lifetime.Any'
+  )
+
+  # Add items for quitting and craving
+  chr_add <- c(
+    chr_add,
+    'SBS.CHR.ALC.ConsiderQuitting',
+    'SBS.CHR.CNN.ConsiderQuitting',
+    'SBS.CHR.VPS.ConsiderQuitting',
+    'SBS.CHR.CNN.CravingOnWakingUp',
+    'SBS.CHR.NCT.CravingOnWakingUp'
+  )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
 

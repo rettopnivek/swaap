@@ -9,6 +9,10 @@ swaap_select.substances(chr_input = NULL, lgc_SBIRT = FALSE)
 \arguments{
 \item{chr_input}{An optional character
 vector, additional columns to include.}
+
+\item{lgc_SBIRT}{A logical value; if \code{TRUE}
+includes additional measures included for
+schools and grades undergoing SBIRT.}
 }
 \value{
 A character vector.

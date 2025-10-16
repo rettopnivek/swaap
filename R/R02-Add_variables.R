@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-05-15
+# Last updated: 2025-10-16
 
 # Table of contents
 # I) swaap_add.ID
@@ -574,7 +574,13 @@ swaap_add.source <- function(
 #'   the substance as originally labeled (either
 #'   \code{'Alcohol'}, \code{'Cannabis'},
 #'   \code{'Vapes'}, \code{'Cigarettes'},
-#'   \code{'Cigars'}, \code{'Smokeless'}
+#'   \code{'Cigars'}, \code{'Smokeless'}.
+#'   Special processing done if \code{'Other'}
+#'   (creates a lifetime use variable only and
+#'   collapses across the 8 substance types) or
+#'   \code{'Quit'} (creates 3 variables encoding
+#'   desire to quit alcohol, cannabis, and vapes
+#'   respectively).
 #'
 #' @author Kevin Potter
 #'
@@ -592,6 +598,150 @@ swaap_add.source <- function(
 swaap_add.substances <- function(
     dtf_data,
     chr_substance ) {
+
+  # Special case for other substances
+  if ( chr_substance == 'Other' ) {
+
+    chr_possible <- c(
+      'Prescription',
+      'Hallucinogens',
+      'Psychedelics',
+      'Coca',
+      'Meth',
+      'Heroin',
+      'Inhalants',
+      'Steroids'
+    )
+
+    chr_columns <- paste0(
+      'INV.LGL.SUB.Other.', chr_possible
+    )
+
+    chr_possible <- chr_possible[
+      chr_columns %in% colnames(dtf_data)
+    ]
+    chr_possible <- gsub(
+      'Coca', 'Cocaine', chr_possible, fixed = TRUE
+    )
+
+    chr_columns <- chr_columns[
+      chr_columns %in% colnames(dtf_data)
+    ]
+
+    # Any variables found
+    if ( length(chr_columns) > 0 ) {
+
+      dtf_data$SBS.LGC.OTH.Lifetime.Any <- apply(
+        dtf_data[, chr_columns], 1, function(x) {
+
+          lgc_out <- FALSE
+
+          # Missing data
+          if ( all( is.na(x) ) ) {
+
+            lgc_out <- NA
+
+            # Close 'Missing data'
+          } else {
+
+            if ( any(x %in% TRUE) ) lgc_out <- TRUE
+
+            # Close else for 'Missing data'
+          }
+
+          return( lgc_out )
+        }
+      )
+
+      dtf_data$SBS.CHR.OTH.Lifetime.Any <- apply(
+        dtf_data[, chr_columns], 1, function(x) {
+
+          chr_out <- ''
+
+          # Missing data
+          if ( all( is.na(x) ) ) {
+
+            chr_out <- NA
+
+            # Close 'Missing data'
+          } else {
+
+            if ( any(x %in% TRUE) )
+              chr_out <- paste(
+                chr_possible[ which(x %in% TRUE) ],
+                collapse = '+'
+              )
+
+            # Close else for 'Missing data'
+          }
+
+          return( chr_out )
+        }
+      )
+
+      # Close 'Any variables found'
+    }
+
+    return( dtf_data )
+
+    # Close 'Special case for other substances'
+  }
+
+  # Special case for desire to quit
+  if ( chr_substance == 'Quit' ) {
+
+    if ( 'INV.FCT.SUB.Alcohol.Quit' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.ALC.ConsiderQuitting <-
+        dtf_data$INV.FCT.SUB.Alcohol.Quit
+
+    if ( 'INV.FCT.SUB.Cannabis.Quit' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.CNN.ConsiderQuitting <-
+        dtf_data$INV.FCT.SUB.Cannabis.Quit
+
+    if ( 'INV.FCT.SUB.Vapes.Quit' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.VPS.ConsiderQuitting <-
+        dtf_data$INV.FCT.SUB.Vapes.Quit
+
+    # Add quality control checks
+
+    return( dtf_data )
+
+    # Close 'Special case for desire to quit'
+  }
+
+  # Special case for cravings
+  if ( chr_substance == 'Crave' ) {
+
+    if ( 'INV.INT.SUB.Cannabis.Crave' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp <-
+        c(
+          '10 minutes', # 1
+          '11 - 31 minutes', # 2
+          '31 - 60 minutes', # 3
+          '1 hour or more', # 4
+          'Never' # 5
+        )[
+          dtf_data$INV.INT.SUB.Cannabis.Crave
+        ]
+
+    if ( 'INV.INT.SUB.Nicotine.Crave' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp <-
+        c(
+          '10 minutes', # 1
+          '11 - 31 minutes', # 2
+          '31 - 60 minutes', # 3
+          '1 hour or more', # 4
+          'Never' # 5
+        )[
+          dtf_data$INV.INT.SUB.Cannabis.Crave
+        ]
+
+    # Add quality control checks
+
+    return( dtf_data )
+
+    # Close 'Special case for desire to quit'
+  }
 
   chr_known <- c(
     'Alcohol',
