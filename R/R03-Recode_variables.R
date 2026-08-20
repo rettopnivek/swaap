@@ -7,16 +7,21 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-10-14
+# Last updated: 2026-08-03
 
 # Table of contents
 # B) swaap_recode.base
+# C) swaap_recode.character
 # C) swaap_recode.contact
 # D) swaap_recode.demographics
+# D) swaap_recode.discrimination
 # E) swaap_recode.experience
 # I) swaap_recode.intermittent
 #   I.1) Close connections [2024]
 #   I.2) Language [2023-2024]
+#   I.3) Sleep [2024]
+#   I.4) Climate change [2024]
+#   I.5) Social media [2024]
 # I) swaap_recode.inventories
 #   I.1) ADDI
 #   I.2) APSS
@@ -27,6 +32,7 @@
 # M) swaap_recode.misc
 #   M.1) Prescribed medication [2022+]
 #   M.2) Help-seeking [2020+]
+#   M.3) Connect with school services [2024+]
 # Q) swaap_recode.quality
 
 #### B) swaap_recode.base ####
@@ -580,8 +586,8 @@ swaap_recode.experience <- function(
 #' @returns A data frame with the additional variables
 #' \code{'SBJ.LGC.CloseConnection.<Type>'},
 #' \code{'SBJ.INT.CloseConnection.Happiness'},
-#' \code{'SBJ.LGC.FirstLanguage.English'} and
-#' \code{'SBJ.LGC.HomeLanguage.English'}.
+#' \code{'SBJ.LGC.Language.EnglishWasFirst'} and
+#' \code{'SBJ.LGC.Language.EnglishAtHome'}.
 #'
 #' @export
 
@@ -635,11 +641,11 @@ swaap_recode.intermittent <- function(
   #### I.2) Language [2023-2024] ####
 
   if ( 'SBJ.LGL.FirstLanguage.English' %in% chr_columns )
-    dtf_data$SBJ.LGC.FirstLanguage.English <-
+    dtf_data$SBJ.LGC.Language.EnglishWasFirst <-
       dtf_data$SBJ.LGL.FirstLanguage.English
 
   if ( 'SBJ.LGL.HomeLanguage.English' %in% chr_columns )
-    dtf_data$SBJ.LGC.HomeLanguage.English <-
+    dtf_data$SBJ.LGC.Language.EnglishAtHome <-
       dtf_data$SBJ.LGL.HomeLanguage.English
 
   #### I.3) Sleep [2024] ####
@@ -786,7 +792,7 @@ swaap_recode.inventories <- function(
 
   if ( all(chr_items_new %in% colnames(dtf_data)) )
     dtf_data$INV.INT.ADDI.D.Total <- rowSums(
-      dtf_data[, chr_items_new]
+      dtf_data[, chr_items_new], na.rm = TRUE
     )
 
   chr_items_new <-
@@ -794,7 +800,7 @@ swaap_recode.inventories <- function(
 
   if ( all(chr_items_new %in% colnames(dtf_data)) )
     dtf_data$INV.INT.ADDI.U.Total <- rowSums(
-      dtf_data[, chr_items_new]
+      dtf_data[, chr_items_new], na.rm = TRUE
     )
 
   #### I.2) APSS ####
@@ -1238,8 +1244,9 @@ swaap_recode.linking <- function(
 #' @author Kevin Potter
 #'
 #' @returns A data frame with the additional variables
-#' \code{'SBJ.CHR.PrescribedMedicationHealth'}, and
-#' \code{'SBJ.LGC.SoughtHelp.<Type>'}.
+#' \code{'SBJ.CHR.PrescribedMedicationHealth'},
+#' \code{'SBJ.LGC.SoughtHelp.<Type>'}, and
+#' \code{'SBJ.LGC.ConnectWithSchoolServices'}.
 #'
 #' @export
 
@@ -1317,13 +1324,19 @@ swaap_recode.misc <- function(
     dtf_data$SBJ.CHR.SoughtHelp.Other <-
       dtf_data$INV.CHR.HelpSeeking.Other
 
-  if ( 'INV.FCT.HelpSeeking.Past6Months.Frequency' %in% chr_columns )
+  if ( 'INV.FCT.HelpSeeking.Past6months.Frequency' %in% chr_columns )
     dtf_data$SBJ.CHR.SoughtHelp.FrequencyPast6Months <-
-      dtf_data$INV.FCT.HelpSeeking.Past6Months.Frequency
+      dtf_data$INV.FCT.HelpSeeking.Past6months.Frequency
 
-  if ( 'INV.FCT.HelpSeeking.Past6Months.Helpfulness' %in% chr_columns )
+  if ( 'INV.FCT.HelpSeeking.Past6months.Helpfulness' %in% chr_columns )
     dtf_data$SBJ.CHR.SoughtHelp.HelpfulnessPast6Months <-
-      dtf_data$INV.FCT.HelpSeeking.Past6Months.Helpfulness
+      dtf_data$INV.FCT.HelpSeeking.Past6months.Helpfulness
+
+  #### M.3) Connect with school services [2024+] ####
+
+  if ( 'INV.INT.Connection.Services' %in% chr_columns )
+    dtf_data$SBJ.LGC.ConnectWithSchoolServices <-
+      c( FALSE, TRUE )[ dtf_data$INV.INT.Connection.Services + 1 ]
 
   return( dtf_data )
 }

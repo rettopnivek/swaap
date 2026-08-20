@@ -15,8 +15,8 @@ school-wide assessment data.}
 A data frame with the additional variables
 \code{'SBJ.LGC.CloseConnection.<Type>'},
 \code{'SBJ.INT.CloseConnection.Happiness'},
-\code{'SBJ.LGC.FirstLanguage.English'} and
-\code{'SBJ.LGC.HomeLanguage.English'}.
+\code{'SBJ.LGC.Language.EnglishWasFirst'} and
+\code{'SBJ.LGC.Language.EnglishAtHome'}.
 }
 \description{
 Renames variables that occurred at

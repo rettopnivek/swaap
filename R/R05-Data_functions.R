@@ -7,7 +7,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-08-23
+# Last updated: 2026-04-27
 
 # Table of contents
 # 1) swaap_data.merge
@@ -22,6 +22,8 @@
 # 9) swaap_data.static
 # 10) swaap_data.at
 # 11) swaap_data.deidentified
+# 12) swaap_data.codebook_names
+# 13) swaap_data.survey_summary
 
 #### 1) swaap_data.merge ####
 #' Merge Multiple Data Sets
@@ -326,6 +328,12 @@ swaap_data.merge <- function(
           chr_add[j],
           list( dtf_data = dtf_current,
                 chr_substance = 'Quit' )
+        )
+
+        dtf_current <- do.call(
+          chr_add[j],
+          list( dtf_data = dtf_current,
+                chr_substance = 'Crave' )
         )
 
         # Close 'Adding substances'
@@ -1920,7 +1928,8 @@ swaap_data.at <- function(
 #' @export
 
 swaap_data.deidentified <- function(
-    dtf_data ) {
+    dtf_data,
+    lgc_codebook_names = TRUE ) {
 
   chr_columns <- colnames(dtf_data)
 
@@ -1934,13 +1943,979 @@ swaap_data.deidentified <- function(
     ],
     chr_columns[
       grepl( '.DTT.', chr_columns, fixed = TRUE )
-    ]
+    ],
+    'QLT.CHR.Remove',
+    'SSS.INT.RecruitmentWave',
+    'SBJ.INT.Experience.GradesInSchool'
   )
 
   chr_columns <- chr_columns[
     !chr_columns %in% chr_remove
   ]
 
-  return( dtf_data[, chr_columns] )
+  dtf_data <- dtf_data[, chr_columns]
+
+  if (lgc_codebook_names)
+    dtf_data <- swaap::swaap_data.codebook_names(
+      dtf_data = dtf_data
+    )
+
+  return( dtf_data )
 }
+
+#### 12) swaap_data.codebook_names #####
+#' Match Variables Names to Codebook
+#'
+#' Convenience function that will convert
+#' variable names to be consistent with
+#' the codebook for shared linked SURF data.
+#'
+#' @param dtf_data A data frame.
+#' @param chr_columns A character vector.
+#' @param lgc_reverse A logical value; if \code{TRUE}
+#'   converts back to original variable names instead.
+#'
+#' @returns Either a data frame or character vector,
+#' depending if \code{dtf_data} or \code{chr_columns}
+#' is provided, respectively. If no input is given,
+#' returns a data frame with the pairs of
+#' original and codebook variable names.
+#'
+#' @export
+
+swaap_data.codebook_names <- function(
+    dtf_data = NULL,
+    chr_columns = NULL,
+    lgc_reverse = FALSE ) {
+
+  dtf_names <- rbind(
+
+    # SRV: Survey Metadata
+    c( 'SSS.CHR.DataSet', 'SRV.CHR.DataSet' ),
+    c( 'SSS.INT.SurveyYear', 'SRV.INT.SurveyYear' ),
+    c( 'SSS.CHR.Semester', 'SRV.CHR.Semester' ),
+    c( 'SSS.CHR.SurveyYearSemester', 'SRV.CHR.SurveyYearSemester' ),
+    c( 'SSS.INT.DistrictCode', 'SRV.INT.DistrictCode' ),
+    c( 'SSS.INT.SchoolCode', 'SRV.INT.SchoolCode' ),
+    c( 'SSS.INT.SchoolEnrollment', 'SRV.INT.SchoolEnrollment' ),
+    c( 'SSS.INT.SchoolEnrollmentTotal', 'SRV.INT.SchoolEnrollmentTotal' ),
+    c( 'SSS.INT.TimePoint', 'SRV.INT.TimePoint' ),
+    c( 'SSS.INT.LongitudinalWave', 'SRV.INT.LongitudinalWave' ),
+    c( 'SSS.LGC.SBIRT', 'SRV.LGC.SBIRT' ),
+    c( 'SSS.CHR.SurveyLanguage', 'SRV.CHR.SurveyLanguage' ),
+
+    # IDN; Identifiers
+    c( 'IDN.CHR.Record.ID', 'IDN.CHR.Record.ID' ),
+    c( 'IDN.CHR.Linked.ID', 'IDN.CHR.Linked.ID' ),
+
+    # LNK: Linkage of Records
+    rep( 'LNK.LGC.Attempted', 2 ),
+    rep( 'LNK.LGC.NoIssues', 2 ),
+    rep( 'LNK.CHR.TimePoints', 2 ),
+    rep( 'LNK.CHR.SchoolYears', 2 ),
+    rep( 'LNK.CHR.Grades', 2 ),
+
+    # DMG: Demographics
+    c( 'SSS.INT.Grade', 'DMG.INT.Grade' ),
+    c( 'SBJ.CHR.Sex', 'DMG.CHR.Sex' ),
+    c( 'SBJ.INT.AgeInYears', 'DMG.INT.AgeInYears' ),
+    c( 'SBJ.CHR.GenderIdentity', 'DMG.CHR.GenderIdentity' ),
+    c( 'SBJ.CHR.Sexuality', 'DMG.CHR.Sexuality' ),
+    c( 'SBJ.CHR.Race', 'DMG.CHR.Race' ),
+    c( 'SBJ.CHR.Ethnicity', 'DMG.CHR.Ethnicity' ),
+    c( 'SBJ.LGC.Language.EnglishWasFirst',
+       'DMG.LGC.Language.EnglishWasFirst' ),
+    c( 'SBJ.LGC.Language.EnglishAtHome',
+       'DMG.LGC.Language.EnglishAtHome' ),
+
+    # MNT: Mental Health
+    c( 'SBJ.CHR.PrescribedMedicationHealth',
+       'MNT.CHR.PrescribedMedicationHealth' ),
+    c( 'SBJ.LGC.SoughtHelp.ParentCaregiver',
+       'MNT.LGC.SoughtHelp.ParentCaregiver' ),
+    c( 'SBJ.LGC.SoughtHelp.OtherFamily',
+       'MNT.LGC.SoughtHelp.OtherFamily' ),
+    c( 'SBJ.LGC.SoughtHelp.FriendPartner',
+       'MNT.LGC.SoughtHelp.FriendPartner' ),
+    c( 'SBJ.LGC.SoughtHelp.TeacherCoachAdmin',
+       'MNT.LGC.SoughtHelp.TeacherCoachAdmin' ),
+    c( 'SBJ.LGC.SoughtHelp.SchoolCounselor',
+       'MNT.LGC.SoughtHelp.SchoolCounselor' ),
+    c( 'SBJ.LGC.SoughtHelp.OutsideCounselor',
+       'MNT.LGC.SoughtHelp.OutsideCounselor' ),
+    c( 'SBJ.LGC.SoughtHelp.Pediatrician',
+       'MNT.LGC.SoughtHelp.Pediatrician' ),
+    c( 'SBJ.LGC.SoughtHelp.ReligiousLeader',
+       'MNT.LGC.SoughtHelp.ReligiousLeader' ),
+    c( 'SBJ.LGC.SoughtHelp.Helpline',
+       'MNT.LGC.SoughtHelp.Helpline' ),
+    c( 'SBJ.LGC.SoughtHelp.SocialMediaSupport',
+       'MNT.LGC.SoughtHelp.SocialMediaSupport' ),
+    c( 'SBJ.LGC.SoughtHelp.EmergencyServices',
+       'MNT.LGC.SoughtHelp.EmergencyServices' ),
+    c( 'SBJ.LGC.SoughtHelp.RehabCenter',
+       'MNT.LGC.SoughtHelp.RehabCenter' ),
+    c( 'SBJ.LGC.SoughtHelp.NotListed',
+       'MNT.LGC.SoughtHelp.NotListed' ),
+    c( 'SBJ.LGC.SoughtHelp.Nurse',
+       'MNT.LGC.SoughtHelp.Nurse' ),
+    c( 'SBJ.LGC.SoughtHelp.YouthWellnessCoach',
+       'MNT.LGC.SoughtHelp.YouthWellnessCoach' ),
+    c( 'SBJ.LGC.SoughtHelp.None',
+       'MNT.LGC.SoughtHelp.None' ),
+    c( 'SBJ.CHR.SoughtHelp.Other',
+       'MNT.CHR.SoughtHelp.Other' ),
+    c( 'SBJ.CHR.SoughtHelp.FrequencyPast6Months',
+       'MNT.CHR.SoughtHelp.FrequencyPast6Months' ),
+    c( 'SBJ.CHR.SoughtHelp.HelpfulnessPast6Months',
+       'MNT.CHR.SoughtHelp.HelpfulnessPast6Months' ),
+
+    # SBS: Substance Use
+    rep( 'SBS.LGC.ALC.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.ALC.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.ALC.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.CNN.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.CNN.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.CNN.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.VPS.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.VPS.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.VPS.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.CIG.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.CIG.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.CIG.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.CGR.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.CGR.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.CGR.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.SMK.Lifetime.Any', 2 ),
+    rep( 'SBS.INT.SMK.Past31.UseRating', 2 ),
+    rep( 'SBS.CHR.SMK.Past31.UseRating', 2 ),
+    rep( 'SBS.LGC.OTH.Lifetime.Any', 2 ),
+    rep( 'SBS.CHR.OTH.Lifetime.Any', 2 ),
+    rep( 'SBS.CHR.ALC.ConsiderQuitting', 2 ),
+    rep( 'SBS.CHR.CNN.ConsiderQuitting', 2 ),
+    rep( 'SBS.CHR.VPS.ConsiderQuitting', 2 ),
+    rep( 'SBS.CHR.CNN.CravingOnWakingUp', 2 ),
+    rep( 'SBS.CHR.NCT.CravingOnWakingUp', 2 ),
+    rep( 'SBS.INT.ALC.Past31.BingeRating', 2 ),
+    rep( 'SBS.CHR.ALC.Past31.BingeRating', 2 ),
+
+    # INV: Inventories
+    rep( 'INV.INT.DISC.Q1.Gender', 2 ),
+    rep( 'INV.INT.DISC.Q2.Sexuality', 2 ),
+    rep( 'INV.INT.DISC.Q3.Religion', 2 ),
+    rep( 'INV.INT.DISC.Q4.Disability', 2 ),
+    rep( 'INV.INT.DISC.Q5.Money', 2 ),
+    rep( 'INV.INT.DISC.Q6.Other', 2 ),
+    rep( 'INV.CHR.DISC.Other', 2 ),
+    rep( 'INV.INT.SI.Thoughts', 2 ),
+    rep( 'INV.INT.SI.How', 2 ),
+    rep( 'INV.INT.SI.Attempt', 2 ),
+    rep( 'INV.INT.SI.Selfharm', 2 ),
+    rep( 'INV.INT.SI.Total', 2 ),
+    rep( 'INV.INT.PHQ4.Q1.Anxious', 2 ),
+    rep( 'INV.INT.PHQ4.Q2.Worried', 2 ),
+    rep( 'INV.INT.PHQ4.Q3.Depressed', 2 ),
+    rep( 'INV.INT.PHQ4.Q4.Anhedonia', 2 ),
+    rep( 'INV.INT.ERS.Q1.P.UpsetLongTime', 2 ),
+    rep( 'INV.INT.ERS.Q2.S.HurtEasily', 2 ),
+    rep( 'INV.INT.ERS.Q3.I.FeelIntensely', 2 ),
+    rep( 'INV.INT.ERS.Q4.I.PhysicallyUpset', 2 ),
+    rep( 'INV.INT.ERS.Q5.S.EmotionalEasily', 2 ),
+    rep( 'INV.INT.ERS.Q6.I.EmotionsStrongly', 2 ),
+    rep( 'INV.INT.ERS.Q7.S.OftenAnxious', 2 ),
+    rep( 'INV.INT.ERS.Q8.P.FeelOther', 2 ),
+    rep( 'INV.INT.ERS.Q9.S.LittlestThings', 2 ),
+    rep( 'INV.INT.ERS.Q10.P.DisagreementLong', 2 ),
+    rep( 'INV.INT.ERS.Q11.P.LongerToCalmDown', 2 ),
+    rep( 'INV.INT.ERS.Q12.S.AngryEasily', 2 ),
+    rep( 'INV.INT.ERS.Q13.S.Bothered', 2 ),
+    rep( 'INV.INT.ERS.Q14.S.EasilyAgitated', 2 ),
+    rep( 'INV.INT.ERS.Q15.S.EmotionsInstant', 2 ),
+    rep( 'INV.INT.ERS.Q16.S.ShortFuse', 2 ),
+    rep( 'INV.INT.ERS.Q17.I.EmotionsTooIntense', 2 ),
+    rep( 'INV.INT.ERS.Q18.S.SensitivePerson', 2 ),
+    rep( 'INV.INT.ERS.Q19.I.MoodsPowerful', 2 ),
+    rep( 'INV.INT.ERS.Q20.I.HardToThink', 2 ),
+    rep( 'INV.INT.ERS.Q21.I.Overreacting', 2 ),
+    rep( 'INV.INT.ADDI.Q1.D.Class', 2 ),
+    rep( 'INV.INT.ADDI.Q2.D.Disciplined', 2 ),
+    rep( 'INV.INT.ADDI.Q3.D.Grade', 2 ),
+    rep( 'INV.INT.ADDI.Q4.D.Club', 2 ),
+    rep( 'INV.INT.ADDI.Q5.D.Activities', 2 ),
+    rep( 'INV.INT.ADDI.Q6.D.More', 2 ),
+    rep( 'INV.INT.ADDI.Q7.D.Less', 2 ),
+    rep( 'INV.INT.ADDI.Q8.D.English', 2 ),
+    rep( 'INV.INT.ADDI.Q9.D.Police', 2 ),
+    rep( 'INV.INT.ADDI.Q10.D.Store', 2 ),
+    rep( 'INV.INT.ADDI.Q11.D.Insulted', 2 ),
+    rep( 'INV.INT.ADDI.Q12.D.Service', 2 ),
+    rep( 'INV.INT.ADDI.Q13.D.Smart', 2 ),
+    rep( 'INV.INT.ADDI.Q14.D.Afraid', 2 ),
+    rep( 'INV.INT.ADDI.Q15.D.Threatened', 2 ),
+    rep( 'INV.INT.ADDI.Q1.U.Class', 2 ),
+    rep( 'INV.INT.ADDI.Q2.U.Disciplined', 2 ),
+    rep( 'INV.INT.ADDI.Q3.U.Grade', 2 ),
+    rep( 'INV.INT.ADDI.Q4.U.Club', 2 ),
+    rep( 'INV.INT.ADDI.Q5.U.Activities', 2 ),
+    rep( 'INV.INT.ADDI.Q6.U.More', 2 ),
+    rep( 'INV.INT.ADDI.Q7.U.Less', 2 ),
+    rep( 'INV.INT.ADDI.Q8.U.English', 2 ),
+    rep( 'INV.INT.ADDI.Q9.U.Police', 2 ),
+    rep( 'INV.INT.ADDI.Q10.U.Store', 2 ),
+    rep( 'INV.INT.ADDI.Q11.U.Insulted', 2 ),
+    rep( 'INV.INT.ADDI.Q12.U.Service', 2 ),
+    rep( 'INV.INT.ADDI.Q13.U.Smart', 2 ),
+    rep( 'INV.INT.ADDI.Q14.U.Afraid', 2 ),
+    rep( 'INV.INT.ADDI.Q15.U.Threatened', 2 ),
+    rep( 'INV.DBL.APSS.Q1.MindReading', 2 ),
+    rep( 'INV.DBL.APSS.Q2.TVRadio', 2 ),
+    rep( 'INV.DBL.APSS.Q3.Spying', 2 ),
+    rep( 'INV.DBL.APSS.Q4.Auditory', 2 ),
+    rep( 'INV.DBL.APSS.Q5.Controlled', 2 ),
+    rep( 'INV.DBL.APSS.Q6.Visual', 2 ),
+    rep( 'INV.DBL.APSS.Q7.Grandiosity', 2 ),
+    rep( 'INV.INT.PHQ4.Anxiety', 2 ),
+    rep( 'INV.INT.PHQ4.Depression', 2 ),
+    rep( 'INV.INT.PHQ4.Total', 2 ),
+    rep( 'INV.CHR.PHQ4.CutOffs', 2 ),
+    rep( 'INV.LGC.PHQ4.Distress', 2 ),
+    rep( 'INV.LGC.PHQ4.Anxiety', 2 ),
+    rep( 'INV.LGC.PHQ4.Depression', 2 ),
+    rep( 'INV.INT.ERS.Total', 2 ),
+    rep( 'INV.INT.ERS.Sensitivity', 2 ),
+    rep( 'INV.INT.ERS.Persistence', 2 ),
+    rep( 'INV.INT.ERS.Intensity', 2 ),
+    rep( 'INV.CHR.AUDIT.CutOffs', 2 ),
+    rep( 'INV.INT.ADDI.D.Total', 2 ),
+    rep( 'INV.INT.ADDI.U.Total', 2 ),
+    rep( 'INV.DBL.APSS.Total', 2 ),
+    rep( 'INV.CHR.APSS.CutOffs', 2 ),
+    rep( 'INV.LGC.APSS.AtRisk', 2 ),
+    rep( 'INV.INT.AUDIT.Q1.Frequency', 2 ),
+    rep( 'INV.INT.AUDIT.Q2.Drinks', 2 ),
+    rep( 'INV.INT.AUDIT.Q3.Binge', 2 ),
+    rep( 'INV.INT.AUDIT.Q4.Stopping', 2 ),
+    rep( 'INV.INT.AUDIT.Q5.Failure', 2 ),
+    rep( 'INV.INT.AUDIT.Q6.Morning', 2 ),
+    rep( 'INV.INT.AUDIT.Q7.Guilt', 2 ),
+    rep( 'INV.INT.AUDIT.Q8.Memory', 2 ),
+    rep( 'INV.INT.AUDIT.Q9.Injured', 2 ),
+    rep( 'INV.INT.AUDIT.Q10.Concern', 2 ),
+    rep( 'INV.INT.AUDIT.Total', 2 ),
+
+    # SCH: School Experiences
+    c('SBJ.LGC.Experience.PlaySports',
+      'SCH.LGC.PlaySports' ),
+    c('SBJ.CHR.Experience.GradesInSchool',
+      'SCH.CHR.GradesInSchool' ),
+    c('SBJ.INT.Experience.GradesInSchool',
+      'SCH.INT.GradesInSchool' ),
+    c('SBJ.LGC.Experience.SuspensionsAny',
+      'SCH.LGC.Suspensions.Any' ),
+    c('SBJ.LGC.Experience.SuspensionsDrug',
+      'SCH.LGC.Suspensions.Drug' ),
+    c('SBJ.LGC.Experience.UsedDrugsAtSchool',
+      'SCH.LGC.Suspensions.UsedDrugsAtSchool' ),
+    c('SBJ.CHR.Experience.IEP',
+      'SCH.CHR.IEP' ),
+
+    c( 'SBJ.LGC.CloseConnection.Friend',
+       'SCH.LGC.CloseConnection.Friend' ),
+    c( 'SBJ.LGC.CloseConnection.Parent',
+       'SCH.LGC.CloseConnection.Parent' ),
+    c( 'SBJ.LGC.CloseConnection.Teacher',
+       'SCH.LGC.CloseConnection.Teacher' ),
+    c( 'SBJ.INT.CloseConnection.Happiness',
+       'SCH.INT.CloseConnection.Happiness' ),
+    c( 'SBJ.CHR.CloseConnection.Happiness',
+       'SCH.CHR.CloseConnection.Happiness' ),
+    c( 'SBJ.CHR.Sleep.TimeWakeUp',
+       'SCH.CHR.Sleep.TimeWakeUp' ),
+    c( 'SBJ.CHR.Sleep.TimeGoToBed',
+       'SCH.CHR.Sleep.TimeGoToBed' ),
+    c( 'SBJ.INT.Sleep.TirednessDuringDay',
+       'SCH.INT.Sleep.TirednessDuringDay' ),
+
+    c( 'SBJ.LGC.ClimateChange.Worried',
+       'SCH.LGC.ClimateChange.Worried' ),
+    c( 'SBJ.CHR.ClimateChange.ImpactOnDailyLife',
+       'SCH.CHR.ClimateChange.ImpactOnDailyLife' ),
+    c( 'SBJ.CHR.ClimateChange.CopingStrategies',
+       'SCH.CHR.ClimateChange.CopingStrategies' ),
+    c( 'SBJ.CHR.SocialMediaUseFrequency',
+       'SCH.CHR.SocialMediaUseFrequency' ),
+    c( 'SBJ.LGC.ConnectWithSchoolServices',
+       'SCH.LGC.ConnectWithSchoolServices' ),
+
+    # QLT: Quality checks
+    rep( 'QLT.DBL.ProportionCompleted.Total', 2 ),
+    rep( 'QLT.LGC.AttentionChecks.MetAll', 2 ),
+    rep( 'QLT.LGC.AttentionChecks.MetAtLeastOne', 2 ),
+
+    # WGH: Weights
+    c( 'SBJ.DBL.Weights.State', 'WGH.DBL.Weights.State' ),
+    c( 'SBJ.DBL.Weights.District', 'WGH.DBL.Weights.District' ),
+    c( 'SBJ.DBL.Weights.County', 'WGH.DBL.Weights.County' )
+
+  )
+  colnames(dtf_names) <- c( 'swaap', 'codebook' )
+  dtf_names <- as.data.frame(dtf_names)
+
+  # Rename variables in a data frame
+  if ( !is.null(dtf_data ) ) {
+
+    chr_columns <- colnames(dtf_data)
+
+    # Change from swaap to codebook
+    if ( !lgc_reverse ) {
+
+      for ( k in seq_along(chr_columns) )
+        if ( any( dtf_names$swaap %in% chr_columns[k] ) )
+          chr_columns[k] <- dtf_names$codebook[
+            dtf_names$swaap %in% chr_columns[k]
+          ]
+
+      # Close 'Change from swaap to codebook'
+    } else {
+
+      for ( k in seq_along(chr_columns) )
+        if ( any( dtf_names$codebook %in% chr_columns[k] ) )
+          chr_columns[k] <- dtf_names$swaap[
+            dtf_names$codebook %in% chr_columns[k]
+          ]
+
+      # Close else for 'Change from swaap to codebook'
+    }
+
+    colnames(dtf_data) <- chr_columns
+
+    return( dtf_data )
+
+    # Close 'Rename variables in a data frame'
+  }
+
+
+  # Rename variables in a character vector
+  if ( !is.null(chr_columns ) ) {
+
+    # Change from swaap to codebook
+    if ( !lgc_reverse ) {
+
+      for ( k in seq_along(chr_columns) )
+        if ( any( dtf_names$swaap %in% chr_columns[k] ) )
+          chr_columns[k] <- dtf_names$codebook[
+            dtf_names$swaap %in% chr_columns[k]
+          ]
+
+      # Close 'Change from swaap to codebook'
+    } else {
+
+      for ( k in seq_along(chr_columns) )
+        if ( any( dtf_names$codebook %in% chr_columns[k] ) )
+          chr_columns[k] <- dtf_names$swaap[
+            dtf_names$codebook %in% chr_columns[k]
+          ]
+
+      # Close else for 'Change from swaap to codebook'
+    }
+
+    return( chr_columns )
+
+    # Close 'Rename variables in a data frame'
+  }
+
+  return( dtf_names )
+}
+
+#### 13) swaap_data.survey_summary ####
+#' Summary of Survey Details
+#'
+#' Function that provides summary of
+#' survey (number of surveys, number removed
+#' due to data cleaning, breakdowns by
+#' school type, etc.).
+#'
+#' @param dtf_SRV A data frame, assumed to be
+#'   output from [swaap::swaap_data.merge].
+#' @param chr_times A character vector with
+#'   elements in the form \code{'YYYY Fall'}
+#'   or \code{'YYYY Spring'}, indicating which
+#'   time points to include.
+#'
+#' @returns Output to the console window with
+#' relevant details.
+#'
+#' @export
+
+swaap_data.survey_summary <- function(
+    dtf_SRV,
+    chr_times = NULL ) {
+
+  if ( is.null(chr_times) )
+    chr_times <- sort( unique( dtf_SRV$SSS.CHR.SurveyYearSemester ) )
+
+  dtf_SMM <- dtf_SRV[
+    dtf_SRV$SSS.CHR.SurveyYearSemester %in% chr_times,
+  ]
+
+  dtf_SCH <- aggregate(
+    dtf_SMM$SSS.INT.SchoolEnrollment,
+    list( dtf_SMM$SSS.CHR.SurveyYearSemester,
+          dtf_SMM$SSS.INT.SchoolCode,
+          dtf_SMM$SSS.INT.Grade ),
+    function(x) {
+      num_out <- c(
+        max( length(x), unique(x) ),
+        length(x),
+        NA
+      )
+      num_out[3] <- num_out[2] / num_out[1]
+      return( num_out )
+    }
+  )
+  colnames(dtf_SCH) <- c(
+    'Time', 'School', 'Grade', 'Stats'
+  )
+
+  message( 'Schools' )
+  message( paste0( '  ', length( unique( dtf_SCH$School ) ) ) )
+
+  dtf_SCH_extra <- aggregate(
+    dtf_SCH$Grade,
+    list( dtf_SCH$School ),
+    function (x) {
+      chr_out <- 'High school'
+      if ( any( x %in% 6:8 ) )
+        chr_out <- 'Middle school'
+      if ( any( x %in% 6:8 ) & any(x %in% 9:12 ) )
+        chr_out <- 'Combined'
+
+      return( chr_out )
+    }
+  )
+
+  print( table( dtf_SCH_extra[[2]] ) )
+
+  dtf_RMV <- attributes( dtf_SRV$QLT.LGC.Remove )$swaap.summary_removed
+  dtf_RMV <- dtf_RMV[
+    dtf_RMV$Data %in% chr_times,
+  ]
+
+  int_surveyed <-
+    nrow( dtf_SMM ) + sum( dtf_RMV$Records.Removed )
+  int_removed <- sum( dtf_RMV$Records.Removed )
+
+  message( 'Total surveyed' )
+  message( paste0( '  ', int_surveyed ) )
+  message( 'Met initial exclusion criteria' )
+  message(
+    paste0( '  ', int_removed, ' (',
+            round( 100*int_removed/int_surveyed, 1 ), '%)' )
+  )
+  message( 'Viable surveys' )
+  message( paste0( '  ', nrow(dtf_SMM) ) )
+
+  # Loop over times
+  for ( j in seq_along(chr_times) ) {
+
+    lgc_time <- dtf_SMM$SSS.CHR.SurveyYearSemester %in%
+      chr_times[j]
+
+    message( paste0( '    ', chr_times[j], ': ', sum(lgc_time) ) )
+
+    # Close 'Loop over times'
+  }
+
+  dtf_SCH <- cbind(
+    dtf_SCH[, 1:3],
+    dtf_SCH[[4]]
+  )
+  colnames(dtf_SCH) <- c( 'Time', 'School', 'Grade',
+                          'Enrolled', 'Surveyed', 'Proportion' )
+
+  dtf_SCH_extra <- aggregate(
+    dtf_SCH$Proportion,
+    list( Time = dtf_SCH$Time, School = dtf_SCH$School ),
+    mean
+  )
+
+  # Loop over times and schools
+  for ( j in 1:nrow(dtf_SCH_extra) ) {
+
+    lgc_rows <-
+      dtf_SCH$Time %in% dtf_SCH_extra$Time[j] &
+      dtf_SCH$School %in% dtf_SCH_extra$School[j]
+
+    dtf_SCH_extra[[3]][j] <- sum(
+      dtf_SCH$Surveyed[lgc_rows]
+    ) / sum( dtf_SCH$Enrolled[lgc_rows] )
+
+    # Close 'Loop over times and schools'
+  }
+
+  dtf_AGG <- aggregate(
+    dtf_SCH_extra[[3]],
+    list( dtf_SCH_extra$Time ),
+    function(x) c( mean(x, na.rm = T ), sd(x, na.rm = T ) )
+  )
+
+  message( 'Average response rate across schools' )
+
+  # Loop over times
+  for ( j in 1:nrow(dtf_AGG) ) {
+
+    message( paste0(
+      dtf_AGG[[1]], ': ',
+      round( 100*dtf_AGG[[2]][j, 1], 1 ),
+      '% (',
+      round( 100*dtf_AGG[[2]][j, 2], 1 ),
+      ')'
+    ) )
+
+    # Close 'Loop over times'
+  }
+
+}
+
+#### 14) swaap_data.enrollment ####
+
+swaap_data.enrollment <- function(
+    dtf_SRV,
+    chr_times = NULL,
+    chr_linked = '',
+    chr_outcome = '' ) {
+
+  if ( is.null(chr_times) )
+    chr_times <- sort( unique( dtf_SRV$SSS.CHR.SurveyYearSemester ) )
+
+  dtf_SMM <- dtf_SRV[
+    dtf_SRV$SSS.CHR.SurveyYearSemester %in% chr_times,
+  ]
+
+  chr_LTP <-
+    dtf_SMM |> swaap::swaap_link.timepoints()
+  chr_ATP <- c(
+    chr_LTP,
+    sort( unique( dtf_SMM$SSS.INT.TimePoints ) )
+  )
+
+  # Check for exact linkage
+  if ( chr_linked %in% c( 'Exact', 'exact' ) ) {
+
+    lgc_linked <- grepl(
+      'LNK.CHR.TimePoints', colnames(dtf_SMM), fixed = TRUE
+    ) &
+    grepl(
+      'Exact', colnames(dtf_SMM), fixed = TRUE
+    )
+    if ( any(lgc_linked) )
+      chr_linked <- colnames(dtf_SMM)[lgc_linked][1]
+
+    # Close 'Check for exact linkage'
+  }
+
+  # Check for linkage
+  if ( chr_linked == '' ) {
+
+    lgc_linked <- colnames(dtf_SMM) %in% 'LNK.CHR.TimePoints'
+    if ( any(lgc_linked) )
+      chr_linked <- 'LNK.CHR.TimePoints'
+
+    # Close 'Check for linkage'
+  }
+
+  dtf_SCH <- aggregate(
+    dtf_SMM$SSS.INT.SchoolEnrollment,
+    list(
+      dtf_SMM$SSS.CHR.SurveyYearSemester,
+      dtf_SMM$SSS.INT.SchoolCode,
+      dtf_SMM$SSS.INT.Grade,
+      dtf_SMM$SSS.LGC.SBIRT
+    ),
+    function(x) {
+      num_out <- c(
+        max( length(x), unique(x) ),
+        length(x)
+      )
+      names(num_out) <- c(
+        'Enrolled',
+        'Surveyed'
+      )
+      return( num_out )
+    }
+  )
+  colnames(dtf_SCH) <- c(
+    'Time', 'School', 'Grade', 'SBIRT', 'Stats'
+  )
+  dtf_SCH <- cbind(
+    dtf_SCH[, 1:4 ],
+    dtf_SCH$Stats
+  )
+
+  int_years <- sort(
+    unique( dtf_SMM$SSS.INT.SurveyYear )
+  )
+  chr_year_semester <- unique(
+    dtf_SMM$SSS.CHR.SurveyYearSemester
+  )
+
+  dtf_SCH$Index <-
+    as.numeric( substr( dtf_SCH$Time, 1, 4 ) ) - 2021
+  dtf_SCH$Index[
+    grepl( 'Spring', dtf_SCH$Time )
+  ] <- dtf_SCH$Index[
+    grepl( 'Spring', dtf_SCH$Time )
+  ] + .5
+
+  int_times <- length( unique( dtf_SCH$Index ) )
+  int_schools <- length( unique( dtf_SCH$School ) )
+  int_grades <- length( 6:12 )
+
+  dtf_SCH_ALL <- data.frame(
+    Index = rep(
+      rep( sort( unique( dtf_SCH$Index ) ), each = int_grades ),
+      int_schools
+    ),
+    Time = '',
+    School = rep(
+      sort( unique( dtf_SCH$School ) ),
+      each = int_times*int_grades
+    ),
+    Grade = rep(
+      6:12,
+      int_schools*int_times
+    ),
+    GradeSurveyed = FALSE,
+    SBIRTSchool = FALSE,
+    SBIRTGrade = FALSE,
+    Times = 0,
+    Enrolled = 0,
+    Surveyed = 0,
+    Linked = 0,
+    Outcome = 0
+  )
+
+  dtf_SCH_ALL$Time <- as.character(
+    round( dtf_SCH_ALL$Index - .4 ) + 2021
+  )
+  dtf_SCH_ALL$Time[
+    ( dtf_SCH_ALL$Index - round(dtf_SCH_ALL$Index) ) != 0
+  ] <- paste0(
+    dtf_SCH_ALL$Time[
+      ( dtf_SCH_ALL$Index - round(dtf_SCH_ALL$Index) ) != 0
+    ],
+    ' Spring'
+  )
+  dtf_SCH_ALL$Time[
+    ( dtf_SCH_ALL$Index - round(dtf_SCH_ALL$Index) ) == 0
+  ] <- paste0(
+    dtf_SCH_ALL$Time[
+      ( dtf_SCH_ALL$Index - round(dtf_SCH_ALL$Index) ) == 0
+    ],
+    ' Fall'
+  )
+
+  # Loop over rows
+  for ( r in 1:nrow(dtf_SCH_ALL) ) {
+
+    lgc_match <-
+      dtf_SCH$Index == dtf_SCH_ALL$Index[r] &
+      dtf_SCH$School == dtf_SCH_ALL$School[r] &
+      dtf_SCH$Grade == dtf_SCH_ALL$Grade[r]
+
+    # Successful match
+    if ( any(lgc_match) ) {
+
+      dtf_SCH_ALL$SBIRTGrade[r] <-
+        dtf_SCH$SBIRT[lgc_match]
+      dtf_SCH_ALL$Enrolled[r] <-
+        dtf_SCH$Enrolled[lgc_match]
+      dtf_SCH_ALL$Surveyed[r] <-
+        dtf_SCH$Surveyed[lgc_match]
+
+      # If linked time points found
+      if ( chr_linked != "" ) {
+
+        lgc_linked <-
+          dtf_SMM$SSS.CHR.SurveyYearSemester %in% dtf_SCH_ALL$Time[r] &
+          dtf_SMM$SSS.INT.SchoolCode %in% dtf_SCH_ALL$School[r] &
+          dtf_SMM$SSS.INT.Grade %in% dtf_SCH_ALL$Grade[r]
+
+        dtf_SCH_ALL$Linked[r] <- sum(
+          dtf_SMM[[ chr_linked ]][lgc_linked] %in% chr_LTP
+        )
+
+        # Close 'If linked time points found'
+      }
+
+      # If outcome provided
+      if ( chr_outcome != '' ) {
+
+        lgc_outcome <-
+          dtf_SMM$SSS.CHR.SurveyYearSemester %in% dtf_SCH_ALL$Time[r] &
+          dtf_SMM$SSS.INT.SchoolCode %in% dtf_SCH_ALL$School[r] &
+          dtf_SMM$SSS.INT.Grade %in% dtf_SCH_ALL$Grade[r]
+
+        dtf_SCH_ALL$Outcome[r] <- sum(
+          !is.na( dtf_SMM[[ chr_outcome ]][lgc_outcome] )
+        )
+
+        # Close 'If outcome provided'
+      }
+
+      # Close 'Successful match'
+    }
+
+    # Close 'Loop over rows'
+  }
+
+  dtf_SCH_ALL$Rate <- dtf_SCH_ALL$Surveyed / dtf_SCH_ALL$Enrolled
+  dtf_SCH_ALL$Rate[
+    dtf_SCH_ALL$Enrolled == 0
+  ] <- 0
+
+  # Loop over schools
+  for (s in unique(dtf_SCH_ALL$School) ) {
+
+    lgc_school <- dtf_SCH_ALL$School == s
+
+    dtf_SCH_ALL$SBIRTSchool[lgc_school] <- any(
+      dtf_SCH_ALL$SBIRTGrade[lgc_school]
+    )
+
+    dtf_SCH_ALL$Times[lgc_school] <- length(
+      unique( dtf_SCH_ALL$Time[
+        lgc_school & dtf_SCH_ALL$Surveyed > 0
+      ] )
+    )
+
+    # Close 'Loop over schools'
+  }
+
+  dtf_SCH_ALL$GradeSurveyed <- dtf_SCH_ALL$Surveyed > 0
+
+  return( dtf_SCH_ALL )
+}
+
+
+if ( FALSE ) {
+
+  swaap_data.enrollment_plot <- function(
+    dtf_SRV,
+    chr_measure,
+    chr_groups,
+    chr_function = 'Mean',
+    num_yl = c( 0, 1 ),
+    num_yl_inc = seq( 0, 1, .1 ),
+    chr_linked = 'Exact',
+    chr_times = NULL,
+    chr_outcome = '',
+    num_mar = c( 6, 2, 1, .5 ),
+    num_shift = 2.75,
+    num_labels = NULL,
+    lgc_new = TRUE ) {
+
+    dtf_TBA <- dtf_SRV
+
+    if ( !is.null( dtf_SRV$SRV.CHR.DataSet ) )
+      dtf_TBA <- dtf_SRV |>
+        swaap::swaap_data.codebook_names( lgc_reverse = TRUE )
+
+    dtf_SCH_ALL <- swaap_data.enrollment(
+      dtf_TBA,
+      chr_times = chr_times,
+      chr_linked = chr_linked,
+      chr_outcome = chr_outcome
+    )
+
+    dtf_SCH_ALL$SurveyRate <-
+      dtf_SCH_ALL$Surveyed / dtf_SCH_ALL$Enrolled
+    dtf_SCH_ALL$LinkRate <-
+      dtf_SCH_ALL$Linked / dtf_SCH_ALL$Surveyed
+    dtf_SCH_ALL$CompleteRate <-
+      dtf_SCH_ALL$Outcome / dtf_SCH_ALL$Surveyed
+
+    lst_functions <- list(
+      Mean = function(x) mean(x, na.rm = T ),
+      Distinct = function(x) dplyr::n_distinct(x[!is.na(x)])
+    )
+
+    if (lgc_new) x11(width = 5, height = 5)
+
+    par( mar = num_mar )
+
+    num_xl <- c( 0, 1 )
+
+    dtf_TBP <- NULL
+
+    # Any groups
+    if ( length(chr_groups) != 0 ) {
+
+      dtf_TBP <- dtf_SCH_ALL |>
+        dplyr::filter(
+          GradeSurveyed
+        ) |>
+        dplyr::group_by_at(
+          chr_groups
+        ) |>
+        dplyr::summarise_at(
+          chr_measure, lst_functions[[ chr_function ]]
+        ) |>
+        data.frame()
+
+      num_xl <- c( 0, nrow(dtf_TBP) + 1 )
+
+      # Close 'Any groups'
+    }
+
+    plot(
+      num_xl, num_yl,
+      type = 'n', xaxt = 'n', yaxt = 'n',
+      ylab = '', xlab = '', bty = 'n'
+    )
+
+    segments(
+      rep( num_xl[1], length(num_yl_inc) ),
+      num_yl_inc,
+      rep( num_xl[2], length(num_yl_inc) ),
+      num_yl_inc,
+      col = 'grey90'
+    )
+
+    segments(
+      c( num_xl[1], num_xl[2], num_xl[1], num_xl[1] ),
+      c( num_yl[1], num_yl[1], num_yl[1], num_yl[2] ),
+      c( num_xl[1], num_xl[2], num_xl[2], num_xl[2] ),
+      c( num_yl[2], num_yl[2], num_yl[1], num_yl[2] ),
+      lwd = 2
+    )
+
+    # Any groups
+    if ( length(chr_groups) != 0 ) {
+
+      # More than one group
+      if ( length(chr_groups) > 1 ) {
+
+        int_L <- dplyr::n_distinct(
+          dtf_TBP[[1]]
+        )
+
+        chr_col <- paste0(
+          'grey',
+          round( 100*seq( .3, .9, length.out = int_L ) )
+        )
+        chr_col <- chr_col[
+          as.numeric(
+            as.factor( dtf_TBP[[1]] )
+          )
+        ]
+
+        # Close 'More than one group'
+      } else {
+
+        chr_col <- rep( 'grey', nrow(dtf_TBP ) )
+
+        # Close else for 'More than one group'
+      }
+
+      # Loop over rows
+      for ( r in 1:nrow(dtf_TBP) ) {
+
+        polygon(
+          ( 1:nrow(dtf_TBP) )[r] + .5*c( -1, -1, 1, 1 ),
+          dtf_TBP[[ ncol(dtf_TBP) ]][r]*c( 0, 1, 1, 0 ),
+          col = chr_col[r], border = 'black'
+        )
+
+        # Close 'Loop over rows'
+      }
+
+      # Close 'Any groups'
+    }
+
+    if ( is.null(num_labels) )
+      num_labels <- num_xl[1]
+
+    # If data exists
+    if ( !is.null(dtf_TBP) ) {
+
+      # Loop over grouping variables
+      for ( g in 1:( ncol(dtf_TBP) - 1 ) ) {
+
+        axis(
+          side = 1,
+          1:nrow(dtf_TBP),
+          as.character( dtf_TBP[[g]] ),
+          las = 3,
+          cex.axis = .9,
+          line = -1 + num_shift*(g-1),
+          tick = FALSE
+        )
+
+        axis(
+          side = 1,
+          num_labels,
+          chr_groups[g],
+          line = -1 + num_shift*(g-1),
+          tick = FALSE,
+          xpd = NA
+        )
+
+        # Close 'Loop over grouping variables'
+      }
+
+      # Close 'If data exists'
+    }
+
+    axis(
+      side = 2,
+      num_yl_inc,
+      cex.axis = .9,
+      line = -1.25,
+      tick = FALSE
+    )
+
+    mtext(
+      chr_measure, side = 2, line = .75, cex = .9
+    )
+
+    return( dtf_TBP )
+  }
+
+  dtf_SRV |>
+    swaap_data.enrollment_plot(
+      'School', 'Times',
+      chr_function = 'Distinct',
+      num_yl = c(0, 50),
+      num_yl_inc = seq(0, 50, 10)
+    )
+
+  dtf_SRV |>
+    swaap_data.enrollment_plot(
+      'SurveyRate', 'Grade'
+    )
+
+  dtf_SRV |>
+    swaap_data.enrollment_plot(
+      'SurveyRate', 'SBIRTSchool',
+      num_mar = c( 2, 6, 2, .5 )
+    )
+
+  dtf_SRV |>
+    swaap_data.enrollment_plot(
+      'SurveyRate', 'SBIRTGrade',
+      num_mar = c( 2, 6, 2, .5 )
+    )
+
+  dtf_SRV |>
+    swaap_data.enrollment_plot(
+      'SurveyRate', c( 'SBIRTGrade', 'Time' ),
+      num_mar = c( 6, 4, 1, .5 ),
+      num_labels = -1
+    )
+
+}
+
+
+
 

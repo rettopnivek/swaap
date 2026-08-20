@@ -8,20 +8,10 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-10-10
+# Last updated: 2026-04-22
 
 # TO DO:
-# - Add tests for swaap_link
-#   * Exact matching (school)
-#   * Exact matching (district)
-#   * fastLink (school)
-#   * fastLink (district)
-#   * fastLink (contact info)
-# - Add exact matching component to fastLink
-# - Confirm linking works with districts
-# - Add adaptive process for linking via districts
-#   for middle to high school transition
-# - Create 'true' links data set to test linking
+# - CHECK
 
 # Table of contents
 # 1) Internal functions
@@ -950,10 +940,12 @@ swaap_link.internal.via_fastLink <- function(
       # Close 'If additional arguments provided'
     }
 
-    lst_fastLink <- suppressMessages( do.call(
-      fastLink::fastLink,
-      lst_args
-    ) )
+    capture.output(
+      lst_fastLink <- suppressWarnings( do.call(
+        fastLink::fastLink,
+        lst_args
+      ) )
+    )
 
     int_rows <- c( NA, NA )
 
@@ -2371,7 +2363,8 @@ swaap_link.input.items <- function(
           paste( chr_remove, collapse = ", " )
         )
 
-        warning( chr_warning )
+        if ( any( chr_remove != '' ) )
+          warning( chr_warning )
 
         # Close 'If any variables are constant'
       }
@@ -4672,31 +4665,190 @@ swaap_link.report.discrepant <- function(
 }
 
 #### 5.4) swaap_link.report.comparison ####
+#' Compare Overlap Between Linked Records
+#'
+#' Function, given a data set with linked IDs
+#' and associated time points from two different
+#' approaches, computes the subset of linked and
+#' unique records from one approach categorized
+#' similarly or differently from the other approach.
+#'
+#' @param dtf_linked A data frame.
+#' @param chr_base A character vector with 2 column names,
+#'   the linked IDs and time points for the base approach.
+#' @param chr_contrast A character vector with 2 column names,
+#'   the linked IDs and time points for the contrasting approach.
+#'
+#' @returns A data frame grouped by IDs from the base approach.
+#' See the attributes of the \code{Summaries} column for
+#' details on correct categorization from the contrasting approach.
+#'
+#' @export
 
 swaap_link.report.comparison <- function(
     dtf_linked,
-    chr_ID,
-    chr_TP ) {
+    chr_base,
+    chr_contrast ) {
 
-  dtf_linked$ID_1 <- dtf_linked[[ chr_ID[1] ]]
-  dtf_linked$ID_2 <- dtf_linked[[ chr_ID[2] ]]
+  dtf_linked$ID.BS <- dtf_linked[[ chr_base[1] ]]
+  dtf_linked$ID.CN <- dtf_linked[[ chr_contrast[1] ]]
 
-  dtf_linked$TP_1 <-dtf_linked[[ chr_TP[1] ]]
-  dtf_linked$TP_2 <- dtf_linked[[ chr_TP[2] ]]
+  dtf_linked$TP.BS <- dtf_linked[[ chr_base[2] ]]
+  dtf_linked$TP.CN <- dtf_linked[[ chr_contrast[2] ]]
 
-  dtf_time_by_ID <- dtf_linked |>
+  dtf_IDs <- dtf_linked |>
     dplyr::group_by(
-      ID = ID_1
-    ) |> dplyr::summarise(
-      Records = length( ID_1 ),
-      Distinct = dplyr::n_distinct( ID_2 ),
-      TimePoints = unique( TP_1 ),
-      Match = all( TP_1 == TP_2 ),
-      TimePoint.Mismatch1 = unique(TP_2)[1],
-      TimePoint.Mismatch2 = unique(TP_2)[2],
-      TimePoint.Mismatch3 = unique(TP_2)[3],
+      ID.BS
+    ) |>
+    dplyr::summarise(
+      Records.BS = length( ID.BS ),
+      TimePoints.BS = unique( TP.BS ),
+      Unique = NA,
+      Correct = 0,
+      Missed = 0,
+      FalsePositives = 0,
       .groups = 'drop'
-    ) |> data.frame()
+    ) |>
+    as.data.frame()
 
-  return( dtf_time_by_ID )
+  lst_RID.BS <- lapply(
+    dtf_IDs$ID.BS, function(i) {
+      return(
+        dtf_linked$IDN.CHR.Record.ID[
+          dtf_linked$ID.BS %in% i
+        ]
+      )
+    }
+  )
+
+  lst_RID.CN <- lapply(
+    dtf_IDs$ID.BS, function(i) {
+
+      chr_ID.CN <- unique( dtf_linked$ID.CN[
+        dtf_linked$ID.BS %in% i
+      ] )
+
+      lst_RID <- lapply(
+        chr_ID.CN,
+        function(j) {
+          dtf_linked$IDN.CHR.Record.ID[
+            dtf_linked$ID.CN %in% j
+          ]
+        }
+      )
+
+      names(lst_RID) <- chr_ID.CN
+
+      return(lst_RID)
+    }
+  )
+
+  # Loop over IDs
+  for ( i in 1:nrow(dtf_IDs) ) {
+
+    dtf_IDs$Unique[i] <-
+      length( lst_RID.BS[[i]] ) == 1
+
+    # Should be linked
+    if ( !dtf_IDs$Unique[i] ) {
+
+      j <- which.max( sapply( lst_RID.CN[[i]], length ) )[1]
+
+      dtf_IDs$Correct[i] <- sum(
+        lst_RID.BS[[i]] %in% lst_RID.CN[[i]][[j]]
+      )
+
+      if ( dtf_IDs$Correct[i] == 1 )
+        dtf_IDs$Correct[i] <- 0
+
+      dtf_IDs$Missed[i] <-
+        length( lst_RID.BS[[i]] ) - dtf_IDs$Correct[i]
+
+      # Close 'Should be linked'
+    } else {
+
+      j <- which.max( sapply( lst_RID.CN[[i]], length ) )[1]
+
+      if ( length( lst_RID.CN[[i]][[j]] ) == 1 )
+        dtf_IDs$Correct[i] <- sum(
+          lst_RID.BS[[i]] == unlist( lst_RID.CN[[i]] )
+        )
+
+      dtf_IDs$FalsePositives[i] <- sum(
+        !unlist( lst_RID.CN[[i]] ) %in% lst_RID.CN[[i]]
+      )
+
+      # Close else for 'Should be linked'
+    }
+
+    # Close 'Loop over IDs'
+  }
+
+  dtf_IDs$Summaries <- 'See attributes'
+
+  int_linkable <- dtf_IDs$Records.BS[
+    !dtf_IDs$Unique
+  ] |> sum()
+  int_linked <- dtf_IDs$Correct[
+    !dtf_IDs$Unique
+  ] |> sum()
+
+  int_unique <- dtf_IDs$Records.BS[
+    dtf_IDs$Unique
+  ] |> sum()
+  int_rejected <- dtf_IDs$Correct[
+    dtf_IDs$Unique
+  ] |> sum()
+
+  dtf_confusion <- data.frame(
+    State = c(
+      'Linkable',
+      'Unique'
+    ),
+    Total = c(
+      int_linkable,
+      int_unique
+    ),
+    Frequency = c(
+      int_linked,
+      int_rejected
+    )
+  ) |>
+    dplyr::mutate(
+      Proportion = Frequency / Total,
+      Percent = 100*Proportion
+    )
+
+  # Subset that would be analyzed if using linked data only
+  lgc_analysis <-
+    dtf_linked$TP.CN %in% swaap::swaap_link.timepoints(dtf_linked)
+
+  # Subset of actual linkable records
+  lgc_linkable <-
+    dtf_linked$TP.BS %in% swaap::swaap_link.timepoints(dtf_linked)
+
+  num_analysis <- c(
+    Records = sum(lgc_analysis),
+    Participants = dplyr::n_distinct(
+      dtf_linked$ID.CN[lgc_analysis]
+    ),
+    Records.Linkable = mean(
+      dtf_linked$IDN.CHR.Record.ID[lgc_analysis] %in%
+        dtf_linked$IDN.CHR.Record.ID[lgc_linkable]
+    ),
+    Participants.Linkable = dplyr::n_distinct(
+      dtf_linked$ID.CN[lgc_analysis][
+        dtf_linked$IDN.CHR.Record.ID[lgc_analysis] %in%
+          dtf_linked$IDN.CHR.Record.ID[lgc_linkable]
+      ]
+    )
+  )
+
+  attributes( dtf_IDs$Summaries ) <- list(
+    Confusion = dtf_confusion,
+    Analysis = num_analysis
+  )
+
+  return( dtf_IDs )
 }
+

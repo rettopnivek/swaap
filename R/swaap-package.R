@@ -9,7 +9,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-08-27
+# Last updated: 2025-10-17
 
 # Package development
 # - To update man pages

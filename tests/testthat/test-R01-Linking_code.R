@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-09-03
+# Last updated: 2026-04-22
 
 #### 2) swaap_link ####
 
@@ -658,7 +658,9 @@ test_that("function works with contact info", {
   })
 })
 
-#### 3.1.4) Missing treatment
+#### 3.4) Missingness ####
+
+#### 3.4.1) Function creates missing treatment ####
 
 test_that("function creates missing treatment", {
 
@@ -698,3 +700,4 @@ test_that("function creates missing treatment", {
     lst_combos
   })
 })
+

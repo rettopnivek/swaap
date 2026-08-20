@@ -7,7 +7,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated 2025-10-16
+# Last updated 2026-04-27
 
 # Table of contents
 # 1) swaap_select
@@ -16,16 +16,22 @@
 #   3.B) swaap_select.base
 #   3.C) swaap_select.contact
 #   3.D) swaap_select.demographics
+#   3.D) swaap_select.discrimination
 #   3.E) swaap_select.experience
-# I) swaap_select.intermittent
-#   I.1) Close connections [2024]
-#   I.2) Language [2023-2024]
+#   3.I) swaap_select.intermittent
+#     3.I.1) Close connections [2024]
+#     3.I.2) Language [2023-2024]
+#     3.I.3) Sleep [2024]
+#     3.I.4) Climate change [2024]
+#     3.I.5) Social media [2024]
+#     3.I.6) Weights [2023-2024]
 #   3.I) swaap_select.inventories
 #   3.L) swaap_select.linked
 #   3.L) swaap_select.linking
 #   3.M) swaap_select.misc
-#   M.1) Prescribed medication [2022+]
-#   M.2) Help-seeking [2020+]
+#     3.M.1) Prescribed medication [2022+]
+#     3.M.2) Help-seeking [2020+]
+#     3.M.3) Connect with school services [2024+]
 #   3.Q) swaap_select.quality
 #   3.S) swaap_select.SBIRT
 #   3.S) swaap_select.substances
@@ -129,6 +135,7 @@ swaap_select.base <- function(
     'SSS.INT.SchoolEnrollment',
     'SSS.DTT.SurveyStart',
     'SSS.DTT.SurveyEnd',
+    'SSS.CHR.SurveyLanguage',
     'IDN.CHR.Record.ID',
     'IDN.CHR.LocallyAssignedSchool.ID',
     'IDN.CHR.LAS.ID',
@@ -144,10 +151,15 @@ swaap_select.base <- function(
       'SSS.INT.School.Code',
       paste0(
         'SSS.INT.',
+        c( 'Sixth', 'Seventh',
+           'Eight', 'Ninth',
+           'Tenth', 'Eleventh',
+           'Twelfth' ),
         '.Grade.Enrollment'
       ),
       'SSS.DTM.SurveyStart',
       'SSS.DTM.SurveyEnd',
+      'SSS.CHR.SurveyLanguage',
       'IDX.INT.Origin.Record',
       'IDX.INT.Origin.Database',
       'IDX.INT.Origin.LASID',
@@ -227,7 +239,7 @@ swaap_select.demographics <- function(
   return( chr_output )
 }
 
-#### D) swaap_select.discrimination ####
+#### 3.D) swaap_select.discrimination ####
 #' Select Discrimination Items
 #'
 #' Function to select columns for discrimination
@@ -255,7 +267,7 @@ swaap_select.discrimination <- function(
   )
 
   chr_add <- paste0(
-    'INV.INT.DISC.Q', seq_along(chr_items),
+    'INV.INT.DISC.Q', seq_along(chr_add),
     '.', chr_add
   )
   # Add free text-entry item
@@ -302,7 +314,7 @@ swaap_select.experience <- function(
   return( chr_output )
 }
 
-#### I) swaap_select.intermittent ####
+#### 3.I) swaap_select.intermittent ####
 #' Select Intermittent Variables
 #'
 #' Function to select columns for variables that
@@ -321,25 +333,29 @@ swaap_select.intermittent <- function(
     chr_input = NULL) {
 
   chr_add <- c(
-    #### I.1) Close connections [2024] ####
+    #### 3.I.1) Close connections [2024] ####
     'SBJ.LGC.CloseConnection.Friend',
     'SBJ.LGC.CloseConnection.Parent',
     'SBJ.LGC.CloseConnection.Teacher',
     'SBJ.INT.CloseConnection.Happiness',
     'SBJ.CHR.CloseConnection.Happiness',
-    #### I.2) Language [2023-2024] ####
-    'SBJ.LGC.FirstLanguage.English',
-    'SBJ.LGC.HomeLanguage.English',
-    #### I.3) Sleep [2024] ####
+    #### 3.I.2) Language [2023-2024] ####
+    'SBJ.LGC.Language.EnglishWasFirst',
+    'SBJ.LGC.Language.EnglishAtHome',
+    #### 3.I.3) Sleep [2024] ####
     'SBJ.CHR.Sleep.TimeWakeUp',
     'SBJ.CHR.Sleep.TimeGoToBed',
     'SBJ.INT.Sleep.TirednessDuringDay',
-    #### I.4) Climate change [2024] ####
+    #### 3.I.4) Climate change [2024] ####
     'SBJ.LGC.ClimateChange.Worried',
     'SBJ.CHR.ClimateChange.ImpactOnDailyLife',
     'SBJ.CHR.ClimateChange.CopingStrategies',
-    #### I.5) Social media [2024] ####
-    'SBJ.CHR.SocialMediaUseFrequency'
+    #### 3.I.5) Social media [2024] ####
+    'SBJ.CHR.SocialMediaUseFrequency',
+    #### 3.I.6) Weights [2023-2024] ####
+    'SBJ.DBL.Weights.State',
+    'SBJ.DBL.Weights.District',
+    'SBJ.DBL.Weights.County'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )
@@ -742,16 +758,18 @@ swaap_select.misc <- function(
   )
 
   chr_add <- c(
-    #### M.1) Prescribed medication [2022+] ####
+    #### 3.M.1) Prescribed medication [2022+] ####
     'SBJ.CHR.PrescribedMedicationHealth',
-    #### M.2) Help-seeking [2020+] ####
+    #### 3.M.2) Help-seeking [2020+] ####
     paste0(
       'SBJ.LGC.SoughtHelp.',
       chr_terms
     ),
     'SBJ.CHR.SoughtHelp.Other',
     'SBJ.CHR.SoughtHelp.FrequencyPast6Months',
-    'SBJ.CHR.SoughtHelp.HelpfulnessPast6Months'
+    'SBJ.CHR.SoughtHelp.HelpfulnessPast6Months',
+    #### 3.M.3) Connect with school services [2024+] ####
+    'SBJ.LGC.ConnectWithSchoolServices'
   )
 
   chr_output <- swaap_select.merge( chr_input, chr_add )

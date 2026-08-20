@@ -4,7 +4,7 @@
 \alias{swaap_data.deidentified}
 \title{Deidentify a Standardized Data Set}
 \usage{
-swaap_data.deidentified(dtf_data)
+swaap_data.deidentified(dtf_data, lgc_codebook_names = TRUE)
 }
 \arguments{
 \item{dtf_data}{A data frame, assumed to

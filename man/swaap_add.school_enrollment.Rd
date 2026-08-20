@@ -13,9 +13,9 @@ school-wide assessment data.}
 }
 \value{
 A data frame with additional
-column \code{'SSS.INT.SchoolEnrollment'}
+columns \code{'SSS.INT.SchoolEnrollment'}
 (the number of students enrolled for
-the given school and grade) and
+the given school and grade), and
 \code{'QLT.LGC.GradeSettoNA'} (when a
 student reported a grade not in their
 listed school).

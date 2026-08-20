@@ -8,7 +8,7 @@
 #   kpotter5@mgh.harvard.edu
 # Please email me directly if you
 # have any questions or comments
-# Last updated: 2025-10-16
+# Last updated: 2025-10-21
 
 # Table of contents
 # I) swaap_add.ID
@@ -334,7 +334,9 @@ swaap_add.SBIRT <- function(
     dtf_data$SSS.INT.School.Code %in% c(
       1052,1101,1215,
       1110,1068,1066,
-      1208,1113,1216
+      1208,1113,1216,
+
+      1223 # Added in 2025 Fall
     )
   lgc_SBIRT_10th <-
     dtf_data$SSS.INT.School.Code %in% c(
@@ -342,7 +344,9 @@ swaap_add.SBIRT <- function(
       1028,1020,1037,1098,1104,1065,1209,
       1013,1032,1105,1117,1213,1064,1212,
       1108,1106,1114,1100,1103,1007,1099,
-      1107,1118,1210,1211
+      1107,1118,1210,1211,
+
+      1203, 1136, 1141 # Added in 2025 Fall
     )
 
   # Grades/waves for 2023 Fall
@@ -427,6 +431,42 @@ swaap_add.SBIRT <- function(
     # Close 'Grades/waves for 2025 Spring'
   }
 
+  # Grades/waves for 2025 Fall
+  if ( chr_year_semester %in% '2025 Fall' ) {
+
+    # First recruitment wave
+    lgc_SBIRT <-
+      ( dtf_data$SSS.INT.Grade %in% 11 & lgc_SBIRT_9th ) |
+      ( dtf_data$SSS.INT.Grade %in% 12 & lgc_SBIRT_10th )
+
+    # Update columns
+    dtf_data$SSS.LGC.SBIRT[lgc_SBIRT] <- TRUE
+    dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 4
+    dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 1
+
+    # Second recruitment wave
+    lgc_SBIRT <-
+      ( dtf_data$SSS.INT.Grade %in% 10 & lgc_SBIRT_9th ) |
+      ( dtf_data$SSS.INT.Grade %in% 11 & lgc_SBIRT_10th )
+
+    # Update columns
+    dtf_data$SSS.LGC.SBIRT[lgc_SBIRT] <- TRUE
+    dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 2
+    dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 2
+
+    # Third recruitment wave
+    lgc_SBIRT <-
+      ( dtf_data$SSS.INT.Grade %in% 9 & lgc_SBIRT_9th ) |
+      ( dtf_data$SSS.INT.Grade %in% 10 & lgc_SBIRT_10th )
+
+    # Update columns
+    dtf_data$SSS.LGC.SBIRT[lgc_SBIRT] <- TRUE
+    dtf_data$SSS.INT.SBIRTTimePoint[lgc_SBIRT] <- 0
+    dtf_data$SSS.INT.RecruitmentWave[lgc_SBIRT] <- 3
+
+    # Close 'Grades/waves for 2025 Fall'
+  }
+
   return( dtf_data )
 }
 
@@ -444,9 +484,9 @@ swaap_add.SBIRT <- function(
 #' @author Kevin Potter
 #'
 #' @returns A data frame with additional
-#' column \code{'SSS.INT.SchoolEnrollment'}
+#' columns \code{'SSS.INT.SchoolEnrollment'}
 #' (the number of students enrolled for
-#' the given school and grade) and
+#' the given school and grade), and
 #' \code{'QLT.LGC.GradeSettoNA'} (when a
 #' student reported a grade not in their
 #' listed school).
@@ -712,29 +752,55 @@ swaap_add.substances <- function(
   # Special case for cravings
   if ( chr_substance == 'Crave' ) {
 
-    if ( 'INV.INT.SUB.Cannabis.Crave' %in% colnames(dtf_data) )
-      dtf_data$SBS.CHR.CNN.CravingOnWakingUp <-
-        c(
-          '10 minutes', # 1
-          '11 - 31 minutes', # 2
-          '31 - 60 minutes', # 3
-          '1 hour or more', # 4
-          'Never' # 5
-        )[
-          dtf_data$INV.INT.SUB.Cannabis.Crave
-        ]
+    # Recode craving for cannabis
+    if ( 'INV.INT.SUB.Cannabis.Crave' %in% colnames(dtf_data) ) {
 
-    if ( 'INV.INT.SUB.Nicotine.Crave' %in% colnames(dtf_data) )
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp <-
+        dtf_data$INV.INT.SUB.Cannabis.Crave
+
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp[
+        dtf_data$SBS.CHR.CNN.CravingOnWakingUp %in% 'never'
+      ] <- 'Never'
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp[
+        dtf_data$SBS.CHR.CNN.CravingOnWakingUp %in% '10min'
+      ] <- '10 minutes'
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp[
+        dtf_data$SBS.CHR.CNN.CravingOnWakingUp %in% '11-31min'
+      ] <- '11 - 31 minutes'
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp[
+        dtf_data$SBS.CHR.CNN.CravingOnWakingUp %in% '31-60min'
+      ] <- '31 - 60 minutes'
+      dtf_data$SBS.CHR.CNN.CravingOnWakingUp[
+        dtf_data$SBS.CHR.CNN.CravingOnWakingUp %in% '1hour or more'
+      ] <- '1 hour or more'
+
+      # Close 'Recode craving for cannabis'
+    }
+
+    # Recode craving for nicotine
+    if ( 'INV.INT.SUB.Nicotine.Crave' %in% colnames(dtf_data) ) {
+
       dtf_data$SBS.CHR.NCT.CravingOnWakingUp <-
-        c(
-          '10 minutes', # 1
-          '11 - 31 minutes', # 2
-          '31 - 60 minutes', # 3
-          '1 hour or more', # 4
-          'Never' # 5
-        )[
-          dtf_data$INV.INT.SUB.Cannabis.Crave
-        ]
+        dtf_data$INV.INT.SUB.Nicotine.Crave
+
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp[
+        dtf_data$SBS.CHR.NCT.CravingOnWakingUp %in% 'never'
+      ] <- 'Never'
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp[
+        dtf_data$SBS.CHR.NCT.CravingOnWakingUp %in% '10min'
+      ] <- '10 minutes'
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp[
+        dtf_data$SBS.CHR.NCT.CravingOnWakingUp %in% '11-31min'
+      ] <- '11 - 31 minutes'
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp[
+        dtf_data$SBS.CHR.NCT.CravingOnWakingUp %in% '31-60min'
+      ] <- '31 - 60 minutes'
+      dtf_data$SBS.CHR.NCT.CravingOnWakingUp[
+        dtf_data$SBS.CHR.NCT.CravingOnWakingUp %in% '1hour or more'
+      ] <- '1 hour or more'
+
+      # Close 'Recode craving for nicotine'
+    }
 
     # Add quality control checks
 
